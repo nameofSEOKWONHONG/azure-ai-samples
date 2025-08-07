@@ -1,7 +1,6 @@
 ﻿using Azure.AI.Vision.ImageAnalysis;
-using OcrSample.Services;
 
-namespace OcrSample.Receipts;
+namespace OcrSample.Services.Receipts;
 
 public class ReceiptConvertFactory
 {

@@ -1,4 +1,7 @@
 ﻿using eXtensionSharp;
+using Microsoft.Extensions.DependencyInjection;
+using OcrSample.Services.Documents;
+using OcrSample.Services.Receipts;
 
 namespace OcrSample.Services;
 
@@ -9,20 +12,15 @@ public interface IMainService
  
 public class MainService : IMainService
 {
-    private readonly ITextEmbeddingService _textEmbeddingService;
-    private readonly IReceiptSearchService _receiptSearchService;
-    private readonly IReceiptAnalysisService _receiptAnalysisService;
-    private readonly ILlmService _llmService;
+    private readonly IAiPipeline _receiptPipeline;
+    private readonly IAiPipeline _documentPipeline;
 
-    public MainService(ITextEmbeddingService textEmbeddingService,
-        IReceiptSearchService receiptSearchService,
-        IReceiptAnalysisService receiptAnalysisService,
-        ILlmService llmService)
+    public MainService(
+        [FromKeyedServices("RECEIPT")] IAiPipeline receiptPipeline,
+        [FromKeyedServices("DOCUMENT")] IAiPipeline documentPipeline)
     {
-        _textEmbeddingService = textEmbeddingService;
-        _receiptSearchService = receiptSearchService;
-        _receiptAnalysisService = receiptAnalysisService;
-        _llmService = llmService;
+        _receiptPipeline = receiptPipeline;
+        _documentPipeline = documentPipeline;
     }
     
     public async Task RunAsync()
@@ -39,61 +37,40 @@ public class MainService : IMainService
         Console.WriteLine("7. 질의한 영수증에 대한 결과를 표시합니다.");
         Console.WriteLine("==========================================================================");
         
-        var imageUrls = new[]
+        Console.WriteLine("모드를 선택하세요. (1. 영주증, 2.문서)");
+        var input = Console.ReadLine();
+        var map = new Dictionary<string, IAiPipeline>()
         {
-            "https://cdn.banksalad.com/entities/etc/1517463655748-%EC%98%81%EC%88%98%EC%A6%9D.jpg",
-            "https://raw.githubusercontent.com/nameofSEOKWONHONG/Jennifer/refs/heads/main/doc/%EC%98%81%EC%88%98%EC%A6%9D1.jpg"
+            { "1", _receiptPipeline },
+            { "2", _documentPipeline }
         };
-        
-        foreach (var imageUrl in imageUrls)
+        foreach (var keyValuePair in map)
         {
-            var extract = await _receiptAnalysisService.AnalysisAsync(imageUrl);
-            Console.WriteLine(extract.ToString());
-
-            //convert to azure AI embedding texts.
-            var vector = await _textEmbeddingService.GetEmbeddedText(extract.ToString());
-            if (vector.xIsEmpty())
-            {
-                Console.WriteLine("vector is null");
-                goto END;
-            }
-
-            Console.WriteLine($"dim = {vector.Length}");       // 인덱스 vector 차원과 일치해야 함(예: 1536/3072)
-
-            //update azure AI search
-            //update or create index before upload (as mongodb create index...)
-            var isUpload = await _receiptSearchService.CreateIndexAndUploadAsync(extract, vector);
-            Console.WriteLine(isUpload ? "create index, upload data and vector" : "upload failed");
+            await keyValuePair.Value.Initialize();
         }
-
-        //question azure AI search
+        
+        var instance = map[input];
         QUESTION:
         Console.ForegroundColor = ConsoleColor.DarkCyan;
         Console.WriteLine("Enter Question (QUIT:Q) :");
         var question = Console.ReadLine();
-
+        
         if (question.xIsEmpty())
         {
             Console.WriteLine("Question is empty, retry");
             goto QUESTION;
         }
 
-        if (question.ToUpper().Equals("Q")) goto END;
+        if (question.ToUpper().Equals("Q"))
+            goto END;
 
-        var filter = await _llmService.GetQueryFilterAsync(question);
-
-        var questionVector = await _textEmbeddingService.GetEmbeddedText(question);
-        var results = await _receiptSearchService.SearchAsync(question, filter, questionVector);
-        if (results.xIsNotEmpty())
-        {
-            var text = await _llmService.ReceiptAskResultAsync(results, question);
-            Console.ForegroundColor = ConsoleColor.DarkYellow;
-            Console.WriteLine(text);
-        }
+        var result = await instance.RunAsync(question);
+        Console.ForegroundColor = ConsoleColor.DarkYellow;
+        Console.WriteLine(result);
         goto QUESTION;
 
-
         END:
-        Console.WriteLine("Vision Ocr Sample End");        
+        
+        Console.WriteLine("Azure ocr sample end");
     }
 }

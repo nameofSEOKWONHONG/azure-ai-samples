@@ -5,28 +5,41 @@ using Microsoft.Extensions.Configuration;
 using OcrSample.Models;
 using OpenAI.Chat;
 
-namespace OcrSample.Services;
+namespace OcrSample.Services.Receipts;
 
-public interface ILlmService
+public interface IReceiptLlmService
 {
     Task<QuerySpec> GetQueryFilterAsync(string query);
     Task<string> ReceiptAskResultAsync(List<QueryResult> results, string question);
 }
 
-public class LlmService: ILlmService
+public class ReceiptLlmService: IReceiptLlmService
 {
     private readonly AzureOpenAIClient _client;
     private readonly IConfiguration _configuration;
+    private readonly List<ChatMessage> _chatMessages;
+    private readonly string _system = @"
+                                       역할: 너는 첨부된 자료를 이용해 질의의 결과를 출력한다.
+                                       출력 형식: 자연어 형식
 
-    public LlmService(AzureOpenAIClient client, IConfiguration configuration)
+                                       목표:
+                                       - 첨부된 자료를 활용하여 사용자 잘의에 응답한다.
+                                       - 출력은 질의에 관한 사항만 한다.
+                                       - 첨부 자료를 활용하여 답변한다.
+                                       ";
+    public ReceiptLlmService(AzureOpenAIClient client, IConfiguration configuration)
     {
         _client = client;
         _configuration = configuration;
+        _chatMessages = new List<ChatMessage>()
+        {
+            new SystemChatMessage(_system),
+        };
     }
 
     public async Task<QuerySpec> GetQueryFilterAsync(string query)
     {
-        var system = """
+        var receiptSystemPrompt = """
                      역할: 너는 영수증 검색 질의를 구조화하는 파서다.
                      출력 형식: 반드시 JSON "한 줄"로만 출력한다. 설명/자연어/코드블록/주석 금지.
                      
@@ -75,7 +88,7 @@ public class LlmService: ILlmService
         ChatClient chatClient = _client.GetChatClient(_configuration["AZURE_OPENAI_GPT_NAME"]);
         var messages = new List<ChatMessage>()
         {
-            new SystemChatMessage(system),
+            new SystemChatMessage(receiptSystemPrompt),
             new UserChatMessage(query),
         };
         var chatOptions = new ChatCompletionOptions()
@@ -94,32 +107,22 @@ public class LlmService: ILlmService
 
     public async Task<string> ReceiptAskResultAsync(List<QueryResult> results, string question)
     {
-        var system = $"""
-                     역할: 너는 첨부된 자료를 이용해 질의의 결과를 출력한다.
-                     출력 형식: 자연어 형식
-                     
-                     목표:
-                     - 첨부된 자료를 활용하여 사용자 잘의에 응답한다.
-                     - 출력은 질의에 관한 사항만 한다.
-                     
-                     사용자 질의: {question}
-                     첨부 자료: {results.Select(m => m.ToString()).xJoin(",")}
-                     """;
-        
         ChatClient chatClient = _client.GetChatClient(_configuration["AZURE_OPENAI_GPT_NAME"]);
-        var messages = new List<ChatMessage>()
+        var o = new
         {
-            new SystemChatMessage(system),
-            new UserChatMessage(question),
-        };  
+            첨부자료 = results.Select(m => m.ToString()).xJoin(","),
+            사용자질의 = question
+        };
+        _chatMessages.Add(new UserChatMessage(o.xSerialize()));
         var chatOptions = new ChatCompletionOptions()
         {
             MaxOutputTokenCount = 4096,
             Temperature = 0.0f,
             TopP = 1.0f,
         };  
-        var response = await chatClient.CompleteChatAsync(messages, chatOptions);
+        var response = await chatClient.CompleteChatAsync(_chatMessages, chatOptions);
         var chatMessage = response.Value; // Correctly get the ChatMessage from response.Value
+        _chatMessages.Add(new AssistantChatMessage(chatMessage.Content[0].Text));
         return chatMessage.Content[0].Text;
     }
 }

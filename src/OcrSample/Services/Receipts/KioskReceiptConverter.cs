@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 using Azure.AI.Vision.ImageAnalysis;
 using OcrSample.Models;
 
-namespace OcrSample.Receipts;
+namespace OcrSample.Services.Receipts;
 
 public sealed class KioskReceiptConverter : ReceiptConverterBase
 {

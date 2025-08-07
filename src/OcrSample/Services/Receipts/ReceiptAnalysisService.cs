@@ -1,8 +1,7 @@
 ﻿using Azure.AI.Vision.ImageAnalysis;
 using OcrSample.Models;
-using OcrSample.Receipts;
 
-namespace OcrSample.Services;
+namespace OcrSample.Services.Receipts;
 
 public interface IReceiptAnalysisService
 {

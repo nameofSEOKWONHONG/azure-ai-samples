@@ -5,10 +5,10 @@ using Azure.Search.Documents.Indexes;
 using Azure.Search.Documents.Indexes.Models;
 using Azure.Search.Documents.Models;
 using eXtensionSharp;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using OcrSample.Models;
 
-namespace OcrSample.Services;
+namespace OcrSample.Services.Receipts;
 
 public interface IReceiptSearchService
 {
@@ -20,22 +20,21 @@ public class ReceiptSearchService: IReceiptSearchService
 {
     private readonly SearchIndexClient _searchIndexClient;
     private readonly SearchClient _searchClient;
-    private readonly string _indexName;
+    private const string INDEX_NAME = "receipt-v1";
 
-    public ReceiptSearchService(SearchIndexClient searchIndexClient, SearchClient searchClient, IConfiguration configuration)
+    public ReceiptSearchService(SearchIndexClient searchIndexClient, [FromKeyedServices("RECEIPT")]SearchClient searchClient)
     {
         _searchIndexClient = searchIndexClient;
         _searchClient = searchClient;
-        _indexName = configuration["AZURE_AI_SEARCH_INDEX_NAME"];
     }
 
     public async Task<bool> CreateIndexAndUploadAsync(ReceiptExtract extract, float[] vector)
     {
         var indexes = _searchIndexClient.GetIndexes();
-        var selectedIndex = indexes.Any(m => m.Name == _indexName);
+        var selectedIndex = indexes.Any(m => m.Name == INDEX_NAME);
         if (!selectedIndex)
         {
-            var index = new SearchIndex(_indexName)
+            var index = new SearchIndex(INDEX_NAME)
             {
                 Fields =
                 {
@@ -54,6 +53,7 @@ public class ReceiptSearchService: IReceiptSearchService
                     new SearchableField("address"){ IsFilterable = true, AnalyzerName = LexicalAnalyzerName.KoMicrosoft },
                     new SimpleField("bizNo",    SearchFieldDataType.String){ IsFilterable = true, IsSortable = true, IsFacetable = true },
                     new SimpleField("trxAt",    SearchFieldDataType.DateTimeOffset){ IsFilterable = true, IsSortable = true },
+                    new SimpleField("cardNo",    SearchFieldDataType.String){ IsFilterable = true, IsSortable = true },
                     new SimpleField("totalWon", SearchFieldDataType.Int64){ IsFilterable = true, IsSortable = true }
                 },
                 VectorSearch = new VectorSearch
@@ -91,6 +91,7 @@ public class ReceiptSearchService: IReceiptSearchService
                 address  = extract.Address,
                 bizNo    = extract.BusinessNumber,
                 trxAt    = extract.TransactionDateTime,
+                cardNo   = extract.CardNumberMasked,
                 totalWon = extract.TotalAmountWon
             }
         });
@@ -115,8 +116,10 @@ public class ReceiptSearchService: IReceiptSearchService
                 {
                     Id = doc["id"].xValue<string>(),
                     Merchant = doc["merchant"].xValue<string>(),
+                    BizNo = doc["bizNo"].xValue<string>(),
                     TrxAt = doc["trxAt"].xValue<DateTime>(),
                     TotalWon = doc["totalWon"].xValue<long>(),
+                    CardNo = doc["cardNo"].xValue<string>(),
                     Score = r.Score
                 });
             }
@@ -144,7 +147,7 @@ public class ReceiptSearchService: IReceiptSearchService
             Size = size,
             Skip = (page - 1) * size,
             IncludeTotalCount = true,
-            Select = { "id", "merchant", "merchant_brand", "merchant_branch", "trxAt", "totalWon" },
+            Select = { "id", "merchant", "merchant_brand", "merchant_branch", "trxAt", "cardNo", "bizNo", "totalWon" },
             HighlightFields = { "content_fulltext" }
         };
         

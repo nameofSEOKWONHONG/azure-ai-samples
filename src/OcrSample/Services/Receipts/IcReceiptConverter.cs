@@ -1,11 +1,9 @@
 ﻿using System.Globalization;
 using System.Text.RegularExpressions;
 using Azure.AI.Vision.ImageAnalysis;
-using eXtensionSharp;
 using OcrSample.Models;
-using OcrSample.Services;
 
-namespace OcrSample.Receipts;
+namespace OcrSample.Services.Receipts;
 
 public sealed class IcReceiptConverter : ReceiptConverterBase
 {
