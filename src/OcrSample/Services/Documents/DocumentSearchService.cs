@@ -67,17 +67,6 @@ public class DocumentSearchService : IDocumentSearchService
             Select = { "content", "metadata_storage_file_extension"},
             IncludeTotalCount = true
         };
-        options.VectorSearch = new()
-        {
-            Queries =
-            {
-                new VectorizedQuery(queryVector)
-                {
-                    Fields = { "content_vector" },
-                    KNearestNeighborsCount = Math.Min(200, 500)
-                }
-            }
-        };
         var resp = await _searchClient.SearchAsync<SearchDocument>(query, options);
         double score = 0;
         await foreach (var r in resp.Value.GetResultsAsync())
@@ -88,9 +77,10 @@ public class DocumentSearchService : IDocumentSearchService
             }
         }
 
-        score = score / 2;
+        var i = 0;
         await foreach (var r in resp.Value.GetResultsAsync())
         {
+            if (i >= 3) break;
             if(r.Score < score) continue;
             var doc = r.Document;
             result.Add(new DocumentSearchResult()
@@ -103,6 +93,7 @@ public class DocumentSearchService : IDocumentSearchService
                 MatchScore = r.Score.xValue<string>(),
                 MetadataStorageFileExtension = doc["metadata_storage_file_extension"].xValue<string>(),
             });
+            i++;
         }
 
         return result;

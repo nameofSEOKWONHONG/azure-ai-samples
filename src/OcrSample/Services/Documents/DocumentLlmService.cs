@@ -15,7 +15,7 @@ public class DocumentLlmService : IDocumentLlmService
 {
     private readonly AzureOpenAIClient _client;
     private readonly IConfiguration _configuration;
-    private readonly List<ChatMessage> _chatMessages;
+    //private readonly List<ChatMessage> _chatMessages;
     private readonly string _system = @"
                                        역할: 너는 문서 분석기야.
                                        출력 형식: 자연어 형식
@@ -30,10 +30,10 @@ public class DocumentLlmService : IDocumentLlmService
     {
         _client = client;
         _configuration = configuration;
-        _chatMessages = new List<ChatMessage>()
-        {
-            new SystemChatMessage(_system),
-        };
+        // _chatMessages = new List<ChatMessage>()
+        // {
+        //     new SystemChatMessage(_system),
+        // };
     }
 
     public async Task<string> DocumentSummary(DocumentSearchResult result)
@@ -60,20 +60,27 @@ public class DocumentLlmService : IDocumentLlmService
         ChatClient chatClient = _client.GetChatClient(_configuration["AZURE_OPENAI_GPT_NAME"]);
         var o = new
         {
-            첨부자료 = result.Select(m => m.ToString()),
-            사용자질의 = question
+            사용자질의 = question,
+            첨부자료 = result.Select(m => m.ToString())
         };
-        
-        _chatMessages.Add(new UserChatMessage(o.xSerialize()));
+
+        var chatObj = o.xSerialize();
+        var message = new UserChatMessage(chatObj);
+        var chatMessages = new List<ChatMessage>()
+        {
+            new SystemChatMessage(_system),
+        };        
+        chatMessages.Add(message);
         var chatOptions = new ChatCompletionOptions()
         {
             MaxOutputTokenCount = 4096,
             Temperature = 0.0f,
             TopP = 1.0f,
         };  
-        var response = await chatClient.CompleteChatAsync(_chatMessages, chatOptions);
-        var chatMessage = response.Value; // Correctly get the ChatMessage from response.Value
-        _chatMessages.Add(new AssistantChatMessage(chatMessage.Content[0].Text));
+        var response = await chatClient.CompleteChatAsync(chatMessages, chatOptions);
+        // Correctly get the ChatMessage from response.Value
+        var chatMessage = response.Value; 
+        chatMessages.Add(new AssistantChatMessage(chatMessage.Content[0].Text));
         return chatMessage.Content[0].Text;        
     }
 }
