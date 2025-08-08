@@ -13,6 +13,7 @@
       <PackageReference Include="Azure.AI.Vision.ImageAnalysis" Version="1.0.0" />      
       <PackageReference Include="Azure.Core" Version="1.47.1" />      
       <PackageReference Include="Azure.Search.Documents" Version="11.6.1" />
+      <PackageReference Include="Azure.Storage.Blobs" Version="12.25.0" />
       <PackageReference Include="eXtensionSharp" Version="1.0.4" />      
       <PackageReference Include="Microsoft.Extensions.AI" Version="9.7.1" />      
       <PackageReference Include="Microsoft.Extensions.AI.OpenAI" Version="9.7.1-preview.1.25365.4" />      

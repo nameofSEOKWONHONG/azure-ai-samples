@@ -62,10 +62,19 @@ public class DocumentSearchService : IDocumentSearchService
     public async Task<List<DocumentSearchResult>> SearchAsync(string query, float[] queryVector)
     {
         var result = new List<DocumentSearchResult>();
-        var options = new SearchOptions()
+        var options = new SearchOptions {
+            Size = 100,
+            Select = { "chunk_id", "parent_id", "title", "chunk", "sourcePath" },
+        };
+        options.SearchFields.Add("chunk"); // BM25 대상
+        options.VectorSearch = new()
         {
-            Select = { "content", "metadata_storage_file_extension"},
-            IncludeTotalCount = true
+            Queries = {
+                new VectorizedQuery(queryVector) {
+                    Fields = { "text_vector" },
+                    KNearestNeighborsCount = 80
+                }
+            }
         };
         var resp = await _searchClient.SearchAsync<SearchDocument>(query, options);
         double score = 0;
@@ -77,26 +86,25 @@ public class DocumentSearchService : IDocumentSearchService
             }
         }
 
-        var i = 0;
+        score = score / 2;
+
+        var list = new List<SearchDocument>();
         await foreach (var r in resp.Value.GetResultsAsync())
         {
-            if (i >= 3) break;
-            if(r.Score < score) continue;
-            var doc = r.Document;
-            result.Add(new DocumentSearchResult()
+            list.Add(r.Document);
+        }
+
+        var items = query.xSplit(",");
+        return list.Where(m => m["chunk"].xValue<string>().Contains(items[0]))
+            .Select(doc => new DocumentSearchResult
             {
-                Content = doc["content"].xValue<string>()
+                Content = doc["chunk"].xValue<string>()
                     .Replace("\t", "")
                     .Replace("\n", " ")
                     .Replace("  ", " ")
                     .Trim(),
-                MatchScore = r.Score.xValue<string>(),
-                MetadataStorageFileExtension = doc["metadata_storage_file_extension"].xValue<string>(),
-            });
-            i++;
-        }
-
-        return result;
+                MetadataStorageFileExtension = doc["sourcePath"].xValue<string>(),
+            }).ToList();
     }
 }
 
@@ -105,9 +113,10 @@ public class DocumentSearchResult
     public string Content { get; set; }
     public string MetadataStorageFileExtension { get; set; }
     public string MatchScore { get; set; }
+    public string SourcePath { get; set; }
 
     public override string ToString()
     {
-        return $"- 문서 내용:{Content} {Environment.NewLine} - 매칭 점수:{MatchScore} - 파일확장자: {MetadataStorageFileExtension}";
+        return $"- 문서 내용:{Content} {Environment.NewLine} - 매칭 점수:{MatchScore} - 파일확장자: {MetadataStorageFileExtension} - 파일 URL: {SourcePath}";
     }
 }

@@ -1,4 +1,5 @@
 ﻿using Azure.AI.Vision.ImageAnalysis;
+using Azure.Search.Documents.Indexes.Models;
 
 namespace OcrSample.Services.Documents;
 
@@ -14,6 +15,4 @@ public class DocumentAnalysisService : IDocumentAnalysisService
     {
         _client = client;
     }
-    
-    
 }

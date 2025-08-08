@@ -60,8 +60,9 @@ public class DocumentLlmService : IDocumentLlmService
         ChatClient chatClient = _client.GetChatClient(_configuration["AZURE_OPENAI_GPT_NAME"]);
         var o = new
         {
+            역활 = "사용자 질의에 대해 응답한다. 참조파일URL이 있을 경우 링크 URL을 제공한다.",
             사용자질의 = question,
-            첨부자료 = result.Select(m => m.ToString())
+            첨부자료 = result,
         };
 
         var chatObj = o.xSerialize();

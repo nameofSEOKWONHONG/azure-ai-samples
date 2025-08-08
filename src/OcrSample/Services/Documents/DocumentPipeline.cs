@@ -27,6 +27,7 @@ public class DocumentPipeline : IAiPipeline
     private readonly ITextEmbeddingService _textEmbeddingService;
     private readonly IDocumentSearchService _documentSearchService;
     private readonly IDocumentLlmService _documentLlmService;
+    private readonly IDocumentInitializer _documentInitializer;
     private readonly IConfiguration _configuration;
 
     public DocumentPipeline(
@@ -34,18 +35,20 @@ public class DocumentPipeline : IAiPipeline
         ITextEmbeddingService textEmbeddingService,
         IDocumentSearchService documentSearchService,
         IDocumentLlmService documentLlmService,
+        IDocumentInitializer documentInitializer,
         IConfiguration configuration)
     {
         _azureOpenAiClient = azureOpenAiClient;
         _textEmbeddingService = textEmbeddingService;
         _documentSearchService = documentSearchService;
         _documentLlmService = documentLlmService;
+        _documentInitializer = documentInitializer;
         _configuration = configuration;
     }
 
     public async Task Initialize()
     {
-        await _documentSearchService.CreateIndexAndUploadAsync();
+        await _documentInitializer.InitializeAsync();
     }
 
     public async Task<string> RunAsync(string question)
