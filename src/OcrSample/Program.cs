@@ -17,5 +17,11 @@ services.AddAiDocument(configuration);
 
 services.AddScoped<IMainService, MainService>();
 var provider = services.BuildServiceProvider();
-var main = provider.GetRequiredService<IMainService>();
-await main.RunAsync();
+//var main = provider.GetRequiredService<IMainService>();
+//await main.RunAsync();
+
+var demo = provider.GetRequiredService<DocumentIntelligenceDemo>();
+await demo.CreateIndexAsync();
+await demo.UploadAsync();
+await demo.SearchAsync();
+//search

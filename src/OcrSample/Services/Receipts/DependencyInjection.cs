@@ -25,8 +25,8 @@ public static class DependencyInjection
             new SearchIndexClient(new Uri(configuration["AZURE_AI_SEARCH_ENDPOINT"].xValue<string>()), new AzureKeyCredential(configuration["AZURE_AI_SEARCH_API_KEY"].xValue<string>())));
         services.AddScoped<ITextEmbeddingService, TextEmbeddingService>();
         
-        services.AddKeyedScoped("RECEIPT", (sp, o) => new SearchClient(new Uri(configuration["AZURE_AI_SEARCH_ENDPOINT"].xValue<string>()), 
-            "receipt-v1",
+        services.AddKeyedScoped(AiFeatureConst.RECEIPT, (sp, o) => new SearchClient(new Uri(configuration["AZURE_AI_SEARCH_ENDPOINT"].xValue<string>()), 
+            AiFeatureConst.RECEIPT_INDEX_NAME,
             new AzureKeyCredential(configuration["AZURE_AI_SEARCH_API_KEY"].xValue<string>())));
         services.AddScoped(_ =>
             new ImageAnalysisClient(new Uri(configuration["AZURE_OCR_ENDPOINT"].xValue<string>()), new AzureKeyCredential(configuration["AZURE_OCR_API_KEY"].xValue<string>())));
@@ -36,6 +36,6 @@ public static class DependencyInjection
         services.AddScoped<IReceiptConverter, IcReceiptConverter>();
         services.AddScoped<IReceiptConverter, KioskReceiptConverter>();
         services.AddScoped<ReceiptConvertFactory>();
-        services.AddKeyedScoped<IAiPipeline, ReceiptPipeline>("RECEIPT");
+        services.AddKeyedScoped<IAiPipeline, ReceiptPipeline>(AiFeatureConst.RECEIPT);
     }
 }

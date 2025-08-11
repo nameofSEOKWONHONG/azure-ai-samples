@@ -1,8 +1,6 @@
-﻿using Azure.Search.Documents;
-using Azure.Search.Documents.Indexes;
+﻿using Azure.Search.Documents.Indexes;
 using Azure.Search.Documents.Indexes.Models;
 using eXtensionSharp;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace OcrSample.Services.Documents;
 
@@ -22,59 +20,51 @@ public class DocumentInitializer : IDocumentInitializer
 
     public async Task InitializeAsync()
     {
-        await InitializePdfIndexAsync();
-        await InitializePptIndexAsync();
-        await InitializeDocIndexAsync();
-    }
-
-    private async Task InitializePdfIndexAsync()
-    {
-        var indexName = "doc-pdf-index";
-        var selectedIndex = await _searchIndexClient.GetIndexAsync(indexName);
+        var selectedIndex = await _searchIndexClient.GetIndexAsync(AiFeatureConst.DOCUMENT_INDEX_NAME);
         if(selectedIndex.xIsNotEmpty()) return;
         
-        var index = new SearchIndex(indexName)
+        var index = new SearchIndex(AiFeatureConst.DOCUMENT_INDEX_NAME)
         {
             Fields =
             [
                 // key
-                new SearchField("chunk_id", SearchFieldDataType.String)
+                new SimpleField("chunk_id", SearchFieldDataType.String)
                 {
                     IsKey = true,
-                    IsSearchable = true,
+                },
+
+                new SimpleField("doc_id", SearchFieldDataType.String)
+                {
+                    IsFilterable = true,
                     IsSortable = true,
-                    AnalyzerName = LexicalAnalyzerName.Keyword
                 },
-
-                new SearchField("parent_id", SearchFieldDataType.String)
+                new SimpleField("source_file_type", SearchFieldDataType.String)
                 {
                     IsFilterable = true
+                },           
+                new SimpleField("source_file_path", SearchFieldDataType.String)
+                {
+                    IsFilterable = true,
                 },
-
-                new SearchField("title", SearchFieldDataType.String)
+                
+                new SimpleField("page", SearchFieldDataType.String)
+                {
+                    IsFilterable = true,
+                    IsSortable = true,
+                },                   
+                
+                new SearchField("content", SearchFieldDataType.String)
                 {
                     IsSearchable = true,
-                    AnalyzerName = LexicalAnalyzerName.KoMicrosoft
+                    AnalyzerName = LexicalAnalyzerName.KoLucene
                 },
-
-                new SearchField("chunk", SearchFieldDataType.String)
+                
+                new SearchField("content_vector", SearchFieldDataType.Collection(SearchFieldDataType.Single))
                 {
                     IsSearchable = true,
-                    AnalyzerName = LexicalAnalyzerName.KoMicrosoft
+                    VectorSearchDimensions = 1536,
+                    VectorSearchProfileName = "hnsw"
                 },
-
-                // 벡터 필드: 앱에서 생성한 임베딩 업로드
-                new SearchField("text_vector", SearchFieldDataType.Collection(SearchFieldDataType.Single))
-                {
-                    IsSearchable = true,
-                    VectorSearchDimensions = 3072,
-                    VectorSearchProfileName = "vprofile"
-                },
-
-                new SearchField("sourcePath", SearchFieldDataType.String)
-                {
-                    IsFilterable = true
-                }
             ],
 
             // 2) VectorSearch: 알고리즘 + 프로필 (앱에서 만든 임베딩을 넣는 방식)
@@ -82,21 +72,21 @@ public class DocumentInitializer : IDocumentInitializer
             {
                 Algorithms =
                 {
-                    new HnswAlgorithmConfiguration("hnsw-cosine")
+                    new HnswAlgorithmConfiguration("hnsw-config")
                     {
                         Parameters = new HnswParameters
                         {
                             Metric = VectorSearchAlgorithmMetric.Cosine,
                             M = 16,
-                            EfConstruction = 400,
-                            EfSearch = 256
+                            EfConstruction = 200,
+                            EfSearch = 64
                         }
                     }
                 },
                 Profiles =
                 {
                     // 필드에서 참조할 프로필 이름
-                    new VectorSearchProfile("vprofile", "hnsw-cosine")
+                    new VectorSearchProfile("hnsw", "hnsw-config")
                 }
             },
 
@@ -117,172 +107,6 @@ public class DocumentInitializer : IDocumentInitializer
             }
         };
 
-        await _searchIndexClient.CreateOrUpdateIndexAsync(index);        
-    }
-
-    private async Task InitializePptIndexAsync()
-    {
-        var indexName = "doc-ppt-index";
-        var selectedIndex = await _searchIndexClient.GetIndexAsync(indexName);
-        if(selectedIndex.xIsNotEmpty()) return;
-        
-        var index = new SearchIndex(indexName)
-        {
-            Fields = [
-                new SearchField("chunk_id", SearchFieldDataType.String)
-                {
-                    IsKey = true, IsSearchable = true, IsSortable = true,
-                    AnalyzerName = LexicalAnalyzerName.Keyword
-                },
-                new SearchField("parent_id", SearchFieldDataType.String)
-                {
-                    IsFilterable = true
-                },
-                new SearchField("title", SearchFieldDataType.String)
-                {
-                    IsSearchable = true, AnalyzerName = LexicalAnalyzerName.KoMicrosoft
-                },
-                new SearchField("chunk", SearchFieldDataType.String)
-                {
-                    IsSearchable = true, AnalyzerName = LexicalAnalyzerName.KoMicrosoft
-                },
-                new SearchField("text_vector", SearchFieldDataType.Collection(SearchFieldDataType.Single))
-                {
-                    IsSearchable = true, VectorSearchDimensions = 3072,
-                    VectorSearchProfileName = "vprofile"
-                },
-                new SearchField("sourcePath", SearchFieldDataType.String)
-                {
-                    IsFilterable = true
-                }
-            ],
-            VectorSearch = new VectorSearch
-            {
-                Algorithms =
-                {
-                    new HnswAlgorithmConfiguration("hnsw-cosine")
-                    {
-                        Parameters = new HnswParameters
-                        {
-                            Metric = VectorSearchAlgorithmMetric.Cosine,
-                            M = 16,
-                            EfConstruction = 400,
-                            EfSearch = 256
-                        }
-                    }
-                },
-                Profiles =
-                {
-                    new VectorSearchProfile("vprofile", "hnsw-cosine")
-                }
-            },
-            SemanticSearch = new SemanticSearch
-            {
-                DefaultConfigurationName = "sem-config",
-                Configurations =
-                {
-                    new SemanticConfiguration(
-                        "sem-config",
-                        new SemanticPrioritizedFields
-                        {
-                            TitleField = new SemanticField("title"),
-                            ContentFields = { new SemanticField("chunk") }
-                        })
-                }
-            }
-        };
-
-        await _searchIndexClient.CreateIndexAsync(index);
-    }
-
-    private async Task InitializeDocIndexAsync()
-    {
-        var indexName = "doc-doc-index";
-        var selectedIndex = await _searchIndexClient.GetIndexAsync(indexName);
-        if(selectedIndex.xIsNotEmpty()) return;
-        
-        var index = new SearchIndex(indexName)
-        {
-            Fields = [
-                // 키 (청크 단위)
-                new SearchField("chunk_id", SearchFieldDataType.String)
-                {
-                    IsKey = true, IsSearchable = true, IsSortable = true,
-                    AnalyzerName = LexicalAnalyzerName.Keyword
-                },
-                // 부모(문서 단위)
-                new SearchField("parent_id", SearchFieldDataType.String)
-                {
-                    IsFilterable = true
-                },
-                // 제목(파일명/문서제목)
-                new SearchField("title", SearchFieldDataType.String)
-                {
-                    IsSearchable = true, AnalyzerName = LexicalAnalyzerName.KoMicrosoft
-                },
-                // 본문 청크
-                new SearchField("chunk", SearchFieldDataType.String)
-                {
-                    IsSearchable = true, AnalyzerName = LexicalAnalyzerName.KoMicrosoft
-                },
-                // 임베딩 벡터(1536차원)
-                new SearchField("text_vector", SearchFieldDataType.Collection(SearchFieldDataType.Single))
-                {
-                    IsSearchable = true,
-                    VectorSearchDimensions = 3072,
-                    VectorSearchProfileName = "vprofile"
-                },
-                // 원본 경로/URL
-                new SearchField("sourcePath", SearchFieldDataType.String)
-                {
-                    IsFilterable = true
-                }
-            ],
-            VectorSearch = new VectorSearch
-            {
-                Algorithms =
-                {
-                    new HnswAlgorithmConfiguration("hnsw-cosine")
-                    {
-                        Parameters = new HnswParameters
-                        {
-                            Metric = VectorSearchAlgorithmMetric.Cosine,
-                            M = 16,
-                            EfConstruction = 400,
-                            EfSearch = 256
-                        }
-                    }
-                },
-                Profiles =
-                {
-                    new VectorSearchProfile("vprofile", "hnsw-cosine")
-                }
-            },
-            SemanticSearch = new SemanticSearch
-            {
-                DefaultConfigurationName = "sem-config",
-                Configurations =
-                {
-                    new SemanticConfiguration(
-                        "sem-config",
-                        new SemanticPrioritizedFields
-                        {
-                            TitleField = new SemanticField("title"),
-                            ContentFields = { new SemanticField("chunk") }
-                        })
-                }
-            }
-        };
-
-        await _searchIndexClient.CreateIndexAsync(index);
-    }
-
-    private async Task InitializeDataAsync()
-    {
-        var pdfFiles = Directory.GetFiles("E:\\OCR 학습 데이터", "*.pdf");
-        foreach (var file in pdfFiles)
-        {
-               
-        }
+        await _searchIndexClient.CreateOrUpdateIndexAsync(index);      
     }
 }

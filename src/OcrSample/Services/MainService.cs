@@ -16,8 +16,8 @@ public class MainService : IMainService
     private readonly IAiPipeline _documentPipeline;
 
     public MainService(
-        [FromKeyedServices("RECEIPT")] IAiPipeline receiptPipeline,
-        [FromKeyedServices("DOCUMENT")] IAiPipeline documentPipeline)
+        [FromKeyedServices(AiFeatureConst.RECEIPT)] IAiPipeline receiptPipeline,
+        [FromKeyedServices(AiFeatureConst.DOCUMENT)] IAiPipeline documentPipeline)
     {
         _receiptPipeline = receiptPipeline;
         _documentPipeline = documentPipeline;
@@ -74,3 +74,27 @@ public class MainService : IMainService
         Console.WriteLine("Azure ocr sample end");
     }
 }
+
+public class AiFeatureConst
+{
+    /// <summary>
+    /// 영수증
+    /// </summary>
+    public const string RECEIPT = nameof(RECEIPT);
+    
+    /// <summary>
+    /// 문서 (pdf, pptx, xlsx, docx 등등...)
+    /// </summary>
+    public const string DOCUMENT = nameof(DOCUMENT);
+
+    /// <summary>
+    /// 영수증 인덱스
+    /// </summary>
+    public const string RECEIPT_INDEX_NAME = "receipt-v1";
+    
+    /// <summary>
+    /// 문서 인덱스
+    /// </summary>
+    public const string DOCUMENT_INDEX_NAME = "document-v1";
+}
+

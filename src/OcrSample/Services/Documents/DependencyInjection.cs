@@ -27,16 +27,12 @@ public static class DependencyInjection
         services.AddScoped<IDocumentIntelligenceService, DocumentIntelligenceService>();
         services.AddScoped<IDocumentSearchService, DocumentSearchService>();
         services.AddScoped<IDocumentLlmService, DocumentLlmService>();
-        services.AddKeyedScoped<IAiPipeline, DocumentPipeline>("DOCUMENT");
+        services.AddKeyedScoped<IAiPipeline, DocumentPipeline>(AiFeatureConst.DOCUMENT);
         services.AddScoped<IDocumentInitializer, DocumentInitializer>();
-        services.AddKeyedScoped<SearchClient>("DOCUMENT", (sp, o) => new SearchClient(new Uri(configuration["AZURE_AI_SEARCH_ENDPOINT"].xValue<string>()), 
-            "azureblob-index",
+        services.AddKeyedScoped<SearchClient>(AiFeatureConst.DOCUMENT, (sp, o) => new SearchClient(new Uri(configuration["AZURE_AI_SEARCH_ENDPOINT"].xValue<string>()), 
+            AiFeatureConst.DOCUMENT_INDEX_NAME,
             new AzureKeyCredential(configuration["AZURE_AI_SEARCH_API_KEY"].xValue<string>())));
-        services.AddKeyedScoped<SearchClient>("")
-    }
-}
 
-public class DocumentConst
-{
-    public string PdfIndexName = "";
+        services.AddScoped<DocumentIntelligenceDemo>();
+    }
 }

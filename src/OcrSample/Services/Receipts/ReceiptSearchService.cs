@@ -43,7 +43,7 @@ public class ReceiptSearchService: IReceiptSearchService
                     new SearchField("content_vector", SearchFieldDataType.Collection(SearchFieldDataType.Single))
                     {
                         IsSearchable = true,
-                        VectorSearchDimensions = 3072,
+                        VectorSearchDimensions = 1536,
                         VectorSearchProfileName = "vec-profile",
                     },
                     new SearchableField("merchant"){ IsFilterable = true, IsSortable = true, AnalyzerName = LexicalAnalyzerName.KoMicrosoft },
