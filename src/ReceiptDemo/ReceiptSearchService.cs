@@ -6,9 +6,9 @@ using Azure.Search.Documents.Indexes.Models;
 using Azure.Search.Documents.Models;
 using eXtensionSharp;
 using Microsoft.Extensions.DependencyInjection;
-using OcrSample.Models;
+using ReceiptDemo.Models;
 
-namespace OcrSample.Services.Receipts;
+namespace ReceiptDemo;
 
 public interface IReceiptSearchService
 {

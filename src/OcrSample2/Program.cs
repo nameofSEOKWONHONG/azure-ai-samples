@@ -5,30 +5,33 @@ using Azure.AI.OpenAI;
 using Microsoft.Extensions.AI;
 
 var builder = Host.CreateApplicationBuilder(args);
+builder.Configuration.AddUserSecrets<Program>();
 
-var endpoint = new Uri("YOUR_ENDPOINT"); // e.g. "https://< your hub name >.openai.azure.com/"
-var apiKey = new ApiKeyCredential("YOUR_API_KEY");
-var deploymentName = "YOUR_DEPLOYMENT_NAME"; // e.g. "gpt-4o-mini"
+var endpoint = new Uri(builder.Configuration["AZURE_OPENAI_ENDPOINT"]);
+var apiKey = new ApiKeyCredential(builder.Configuration["AZURE_OPENAI_API_KEY"]);
+var ChatDeployment = builder.Configuration["AZURE_OPENAI_GPT_NAME"];
+var embedDeployment = builder.Configuration["AZURE_OPENAI_EMBED_MODEL"];
 
 builder.Services.AddSingleton(
     new ChatCompletionsClient(
-        new("https://models.inference.ai.azure.com"),
-        new AzureKeyCredential(Environment.GetEnvironmentVariable("GH_TOKEN")!)));
+        endpoint,
+        new AzureKeyCredential(builder.Configuration["AZURE_OPENAI_API_KEY"])));
 
 builder.Services.AddSingleton(
     new AzureOpenAIClient(
-        new Uri(Environment.GetEnvironmentVariable("AZURE_OPENAI_ENDPOINT")),
+        endpoint,
         apiKey));
 
 builder.Services.AddChatClient(services => 
-        services.GetRequiredService<ChatCompletionsClient>()
-        .AsIChatClient("gpt-4o-mini"))
+        services.GetRequiredService<AzureOpenAIClient>()
+            .GetChatClient(ChatDeployment)
+            .AsIChatClient())
     //.UseDistributedCache()
     .UseLogging();
 
 builder.Services.AddEmbeddingGenerator(services =>
     services.GetRequiredService<AzureOpenAIClient>()
-        .GetEmbeddingClient("text-embedding-3-small")
+        .GetEmbeddingClient(embedDeployment)
         .AsIEmbeddingGenerator());
 
 var host = builder.Build();

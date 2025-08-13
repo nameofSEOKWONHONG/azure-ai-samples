@@ -2,10 +2,10 @@
 using Azure.AI.OpenAI;
 using eXtensionSharp;
 using Microsoft.Extensions.Configuration;
-using OcrSample.Models;
 using OpenAI.Chat;
+using ReceiptDemo.Models;
 
-namespace OcrSample.Services.Receipts;
+namespace ReceiptDemo;
 
 public interface IReceiptLlmService
 {

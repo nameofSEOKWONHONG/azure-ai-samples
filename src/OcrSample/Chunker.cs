@@ -1,6 +1,6 @@
 ﻿using System.Text.RegularExpressions;
 
-namespace OcrSample.Services.Documents;
+namespace OcrSample;
 
 public static class Chunker
 {

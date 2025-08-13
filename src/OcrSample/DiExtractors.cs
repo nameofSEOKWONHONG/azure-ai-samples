@@ -1,10 +1,7 @@
-﻿using System.Text;
-using System.Text.Json;
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 using Azure.AI.DocumentIntelligence;
-using eXtensionSharp;
 
-namespace OcrSample.Services.Documents;
+namespace OcrSample;
 
 public class DiExtractors
 {

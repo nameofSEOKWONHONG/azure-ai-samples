@@ -1,4 +1,4 @@
-﻿namespace OcrSample.Models;
+﻿namespace ReceiptDemo.Models;
 
 public class QueryResult
 {

@@ -1,43 +1,46 @@
 ﻿using System.Diagnostics;
-using System.Text.Json;
 using Azure;
 using Azure.AI.DocumentIntelligence;
-using Azure.AI.OpenAI;
 using Azure.Search.Documents;
 using Azure.Search.Documents.Indexes;
 using Azure.Search.Documents.Indexes.Models;
 using Azure.Search.Documents.Models;
 using eXtensionSharp;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 using OpenAI.Chat;
+using ChatMessage = OpenAI.Chat.ChatMessage;
 
-namespace OcrSample.Services.Documents;
+namespace OcrSample;
 
 public class DocumentIntelligenceDemo
 {
+    private readonly IChatClient _chatClient;
     private readonly SearchIndexClient _searchIndexClient;
-    private readonly IConfiguration _configuration;
-    private readonly ITextEmbeddingService _textEmbeddingService;
+    private readonly IEmbeddingGenerator<string, Embedding<float>> _embeddingGenerator;
     private readonly SearchClient _searchClient;
-    private readonly AzureOpenAIClient _azureOpenAiClient;
+    private readonly DocumentIntelligenceClient _documentIntelligenceClient;
+    private readonly IConfiguration _configuration;
 
-    public DocumentIntelligenceDemo(SearchIndexClient searchIndexClient, IConfiguration configuration, ITextEmbeddingService textEmbeddingService,
-        [FromKeyedServices(AiFeatureConst.DOCUMENT)]SearchClient searchClient,
-        AzureOpenAIClient azureOpenAiClient)
+    public DocumentIntelligenceDemo(
+        IChatClient chatClient,
+        IEmbeddingGenerator<string,Embedding<float>> embeddingGenerator,
+        SearchIndexClient searchIndexClient,
+        SearchClient searchClient,
+        DocumentIntelligenceClient documentIntelligenceClient,
+        IConfiguration configuration
+        )
     {
+        _chatClient = chatClient;
         _searchIndexClient = searchIndexClient;
-        _configuration = configuration;
-        _textEmbeddingService = textEmbeddingService;
+        _embeddingGenerator = embeddingGenerator;
         _searchClient = searchClient;
-        _azureOpenAiClient = azureOpenAiClient;
+        _documentIntelligenceClient = documentIntelligenceClient;
+        _configuration = configuration;
     }
 
     public async Task UploadAsync()
     {
-        var client = new DocumentIntelligenceClient(new Uri(_configuration["AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT"].xValue<string>()),
-            new AzureKeyCredential(_configuration["AZURE_DOCUMENT_INTELLIGENCE_KEY"].xValue<string>()));
-
         var files = _configuration["OCR_SAMPLE_FILES"].xValue<string[]>();
         var list = new List<DocChunk>();
         foreach (var filePath in files)
@@ -45,7 +48,7 @@ public class DocumentIntelligenceDemo
             var sw = Stopwatch.StartNew();
             await using var stream = File.OpenRead(filePath);
             var bytes = StreamToByteArray(stream);
-            var operation = await client.AnalyzeDocumentAsync(WaitUntil.Completed, "prebuilt-layout", new BinaryData(bytes));
+            var operation = await _documentIntelligenceClient.AnalyzeDocumentAsync(WaitUntil.Completed, "prebuilt-layout", new BinaryData(bytes));
             var resp = await operation.WaitForCompletionAsync();
             var result = resp.Value;
             Console.WriteLine($"Pages: {result.Pages.Count}");
@@ -67,7 +70,7 @@ public class DocumentIntelligenceDemo
                         SourceFileName = filePath.xGetFileName(),
                         Page = documentPage.PageNumber,
                         Content = text,
-                        ContentVector = await _textEmbeddingService.GetEmbeddedText(text)
+                        ContentVector = (await _embeddingGenerator.GenerateAsync(text)).Vector.ToArray()
                     };
                     list.Add(doc);
                 }
@@ -97,10 +100,10 @@ public class DocumentIntelligenceDemo
 
     public async Task CreateIndexAsync()
     {
-        if(_searchIndexClient.GetIndexes().Any(m => m.Name == AiFeatureConst.DOCUMENT_INDEX_NAME))
+        if(_searchIndexClient.GetIndexes().Any(m => m.Name == _configuration["AZURE_AI_SEARCH_INDEX_NAME"]))
             return;
         
-        var index = new SearchIndex(AiFeatureConst.DOCUMENT_INDEX_NAME)
+        var index = new SearchIndex(_configuration["AZURE_AI_SEARCH_INDEX_NAME"])
         {
             Fields =
             [
@@ -231,7 +234,6 @@ public class DocumentIntelligenceDemo
     
     public async Task SearchAsync()
     {
-        var chat = _azureOpenAiClient.GetChatClient(_configuration["AZURE_OPENAI_GPT_NAME"]);
         var system = """
                      역할: 너는 Azure AI Search 인덱스(doc_id, source_file_type[pdf|pptx|docx], source_file_path, source_file_name, page[int], content, content_vector)를 대상으로 한국어 사용자 질의를 QueryPlan(JSON 한 줄)로 정규화한다.
 
@@ -260,7 +262,7 @@ public class DocumentIntelligenceDemo
             Console.ForegroundColor = ConsoleColor.Yellow;
             
             var entities = ExtractEntities(userQuery);
-            float[] detectEmbedding = await _textEmbeddingService.GetEmbeddedText(userQuery); // 판정용 임베딩
+            float[] detectEmbedding = (await _embeddingGenerator.GenerateAsync(userQuery)).Vector.ToArray(); // 판정용 임베딩
             
             var messages = new List<ChatMessage>()
             {
@@ -268,12 +270,12 @@ public class DocumentIntelligenceDemo
                 new UserChatMessage(userQuery),
             };
             
-            var resp = await chat.CompleteChatAsync(messages);
-            var jsonLine = resp.Value.Content[0].Text.Trim();
-            var plan = JsonSerializer.Deserialize<QueryPlan>(jsonLine, new JsonSerializerOptions
+            var resp = await _chatClient.GetResponseAsync<QueryPlan>(new List<Microsoft.Extensions.AI.ChatMessage>()
             {
-                PropertyNameCaseInsensitive = true
-            }) ?? new QueryPlan();
+                new Microsoft.Extensions.AI.ChatMessage(ChatRole.System, system),
+                new Microsoft.Extensions.AI.ChatMessage(ChatRole.User, userQuery)
+            });
+            var plan = resp.Result;
             plan.ExcludedChunkIds = plan.ExcludedChunkIds = _documentResults
                 .Select(m => m.ChunkId)
                 .TakeLast(200)
@@ -287,7 +289,7 @@ public class DocumentIntelligenceDemo
                     ? plan.VectorFromText!
                     : (plan.Keyword ?? "");
 
-                embedding = await _textEmbeddingService.GetEmbeddedText(embedText);
+                embedding = (await _embeddingGenerator.GenerateAsync(embedText)).Vector.ToArray();
             }
             
             var options = new SearchOptions
@@ -392,37 +394,50 @@ public class DocumentIntelligenceDemo
                               $"IntentNew={signals.IntentIsNew}, Chg={signals.ChangedFilterRatio:F2}, " +
                               $"Overlap={signals.ResultOverlap:F2}, SHIFT={shifted}");
 
-            var ask = await AskFromGpt(_documentResults.xSerialize(), userQuery);
+            var ask = await AskFromGpt(_documentResults.xSerialize(), userQuery, shifted);
+            if(ask.Contains("모릅") || ask.Contains("근거가 부족") || ask.Contains("답변하기 어렵")) return;
             _asks.Add(ask);
         }
     }
 
     private List<string> _asks = new();
 
-    private async Task<string> AskFromGpt(string reference, string question)
+    private async Task<string> AskFromGpt(string reference, string question, bool isShift = true)
     {
         Console.ForegroundColor = ConsoleColor.Cyan;
         var system = """
                      규칙:
-                     1) <REF> … </REF> 안의 내용만 근거로 답한다.
-                     2) <REF> … </REF> 안의 내용중 filename을 참고하여 최신 년도로 답한다.
-                     3) <REF> … </REF>의 출처(파일명)를 밝힌다.
-                     3) 근거가 부족하면 모른다고 말한다.
-                     4) 답변은 한국어로 간결·정확·공손하게 작성한다.
-                     5) 원문을 장황하게 복사/붙여넣기하지 않는다.
+                     1) <REF></REF> 안의 내용만 근거로 답한다.
+                     2) <REF></REF> 안의 내용중 SourceFileName을 참고하여 년도명이 있을 경우 최신 기준으로 답한다.
+                     3) <REF></REF>의 출처(파일명)를 밝힌다.
+                     4) 근거가 부족하면 모른다고 말한다.
+                     5) 답변은 한국어로 간결·정확·공손하게 작성한다.
+                     6) 원문을 장황하게 복사/붙여넣기하지 않는다.
                      """;
-        var messages = new List<ChatMessage>()
-        {
-            new SystemChatMessage(system),
-            new UserChatMessage($"<REF>\n{reference.xValue<string>(string.Empty)}\n</REF>"),
-            new UserChatMessage(question)
-        };
-        messages.AddRange(_asks.Select(m => new AssistantChatMessage(m)));
+        // var messages = new List<ChatMessage>()
+        // {
+        //     new SystemChatMessage(system),
+        //     new UserChatMessage($"<REF>\n{reference.xValue<string>(string.Empty)}\n</REF>"),
+        //     new UserChatMessage(question)
+        // };
+        // messages.AddRange(_asks.Select(m => new AssistantChatMessage(m)));
 
-        var chat = _azureOpenAiClient.GetChatClient(_configuration["AZURE_OPENAI_GPT_NAME"]);
-        var resp = await chat.CompleteChatAsync(messages);
-        Console.WriteLine(resp.Value.Content[0].Text);
-        return resp.Value.Content[0].Text;
+        var messages = new List<Microsoft.Extensions.AI.ChatMessage>()
+        {
+            new Microsoft.Extensions.AI.ChatMessage(ChatRole.System, system),
+            new Microsoft.Extensions.AI.ChatMessage(ChatRole.User,
+                $"<REF>\n{reference.xValue<string>(string.Empty)}\n</REF>"),
+            new Microsoft.Extensions.AI.ChatMessage(ChatRole.User, question)
+        };
+        if (!isShift)
+        {
+            messages.AddRange(_asks.Select(m => new Microsoft.Extensions.AI.ChatMessage(ChatRole.Assistant, m)));    
+        }
+
+        var resp = await _chatClient.GetResponseAsync(messages);
+        
+        Console.WriteLine(resp.Messages.xJoin());
+        return resp.Messages.xJoin();
     }
 
     static string BuildFilter(QueryPlan p)

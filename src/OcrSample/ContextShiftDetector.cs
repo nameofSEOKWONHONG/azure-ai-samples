@@ -1,6 +1,4 @@
-﻿using OcrSample.Services.Documents;
-
-namespace OcrSample.Services;
+﻿namespace OcrSample;
 
 public sealed class ContextShiftDetector
 {

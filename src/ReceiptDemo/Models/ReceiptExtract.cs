@@ -1,7 +1,7 @@
 ﻿using System.Text.Json.Serialization;
 using eXtensionSharp;
 
-namespace OcrSample.Models;
+namespace ReceiptDemo.Models;
 
 /// <summary>
 /// 영수증에서 추출한 핵심 메타데이터를 보관하는 DTO.

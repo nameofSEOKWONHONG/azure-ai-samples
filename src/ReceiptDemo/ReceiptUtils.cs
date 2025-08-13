@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 using Azure.AI.Vision.ImageAnalysis;
 using eXtensionSharp;
 
-namespace OcrSample.Services.Receipts;
+namespace ReceiptDemo;
 
 public class ReceiptUtils
 {

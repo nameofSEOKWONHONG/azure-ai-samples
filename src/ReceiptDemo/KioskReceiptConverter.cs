@@ -1,9 +1,9 @@
 ﻿using System.Globalization;
 using System.Text.RegularExpressions;
 using Azure.AI.Vision.ImageAnalysis;
-using OcrSample.Models;
+using ReceiptDemo.Models;
 
-namespace OcrSample.Services.Receipts;
+namespace ReceiptDemo;
 
 public sealed class KioskReceiptConverter : ReceiptConverterBase
 {
