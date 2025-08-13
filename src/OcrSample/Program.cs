@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using System.Diagnostics;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using OcrSample.Services;
 using OcrSample.Services.Documents;
@@ -21,7 +22,9 @@ var provider = services.BuildServiceProvider();
 //await main.RunAsync();
 
 var demo = provider.GetRequiredService<DocumentIntelligenceDemo>();
-await demo.CreateIndexAsync();
-await demo.UploadAsync();
+
+//await demo.CreateIndexAsync();
+//await demo.UploadAsync();
+
 await demo.SearchAsync();
 //search
