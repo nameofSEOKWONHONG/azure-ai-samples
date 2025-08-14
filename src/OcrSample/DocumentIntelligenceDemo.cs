@@ -47,10 +47,9 @@ public class DocumentIntelligenceDemo
         {
             var sw = Stopwatch.StartNew();
             await using var stream = File.OpenRead(filePath);
-            var bytes = StreamToByteArray(stream);
-            var operation = await _documentIntelligenceClient.AnalyzeDocumentAsync(WaitUntil.Completed, "prebuilt-layout", new BinaryData(bytes));
-            var resp = await operation.WaitForCompletionAsync();
-            var result = resp.Value;
+            var binary = await BinaryData.FromStreamAsync(stream);
+            var operation = await _documentIntelligenceClient.AnalyzeDocumentAsync(WaitUntil.Completed, "prebuilt-layout", binary);
+            var result = operation.Value;
             Console.WriteLine($"Pages: {result.Pages.Count}");
         
             int seq = 0;
@@ -312,6 +311,7 @@ public class DocumentIntelligenceDemo
             // Vector
             if (plan.UseVector && embedding is { Length: > 0 })
             {
+                var knn = Math.Clamp(plan.TopK * 2, 10, 50);
                 options.VectorSearch = new()
                 {
                     Queries =
@@ -319,7 +319,7 @@ public class DocumentIntelligenceDemo
                         new VectorizedQuery(embedding)
                         {
                             Fields = { "content_vector" },
-                            KNearestNeighborsCount = plan.TopK
+                            KNearestNeighborsCount = knn
                         }
                     }
                 };
@@ -339,13 +339,28 @@ public class DocumentIntelligenceDemo
             }
 
             var searchResult = await _searchClient.SearchAsync<SearchDocument>(searchText, options);
+            var results = new List<(SearchDocument Doc, double Score)>();
+            await foreach (var hit in searchResult.Value.GetResultsAsync())
+                results.Add((hit.Document, hit.Score ?? 0));
+
+            var filtered = new List<(SearchDocument Doc, double Score)>();
+            if (results.Count > 0)
+            {
+                var max = results.Max(r => r.Score);
+                filtered = results
+                    .Where(r => max > 0 && (r.Score / max) >= 0.6)   // threshold=0.6 예시
+                    .OrderByDescending(r => r.Score)
+                    .Take(plan.TopK)
+                    .ToList();
+                // 여기서 filtered만 LLM 프롬프트에 사용
+            }            
             
             var currentHits = new List<SearchDocumentResult>();
             var currentChunkIds = new List<string>();
             
-            await foreach (var hit in searchResult.Value.GetResultsAsync())
+            foreach (var hit in filtered)
             {
-                var doc = hit.Document;
+                var doc = hit.Doc;
                 
                 if (!doc.TryGetValue("chunk_id", out var chunk_id)) continue;
                 doc.TryGetValue("content", out var content);
@@ -395,7 +410,7 @@ public class DocumentIntelligenceDemo
                               $"Overlap={signals.ResultOverlap:F2}, SHIFT={shifted}");
 
             var ask = await AskFromGpt(_documentResults.xSerialize(), userQuery, shifted);
-            if(ask.Contains("모릅") || ask.Contains("근거가 부족") || ask.Contains("답변하기 어렵")) return;
+            if(ask.Contains("모릅니다.") || ask.Contains("근거가 부족") || ask.Contains("답변하기 어렵")) return;
             _asks.Add(ask);
         }
     }
