@@ -45,7 +45,7 @@ public class DocumentIntelligenceDemo
     
     public async Task UploadAsync()
     {
-        var files = _configuration["OCR_SAMPLE_FILES"].xValue<string[]>();
+        var files = new[] { "E:\\문서\\데이터 표준화 지침.pdf" };
         var list = new List<DocChunk>();
         foreach (var filePath in files)
         {
@@ -72,7 +72,7 @@ public class DocumentIntelligenceDemo
                     {
                         var vec = (await _embeddingGenerator.GenerateAsync(text)).Vector.ToArray();
                         return new DocChunk {
-                            ChunkId = $"{docId}_{documentPage.PageNumber:D4}_{seq++:D3}",
+                            ChunkId = $"{docId}:{documentPage.PageNumber:D4}:{seq++:D3}",
                             DocId = docId,
                             SourceFileType = "pdf",
                             SourceFilePath = filePath,
@@ -578,7 +578,7 @@ public class DocumentIntelligenceDemo
 
         var options = new ChatOptions()
         {
-            MaxOutputTokens = 2048,
+            MaxOutputTokens = 6553,
             Temperature = 0f,
             TopP = 0.1f
         };
@@ -586,9 +586,9 @@ public class DocumentIntelligenceDemo
         Console.WriteLine($"답변: {resp.Result.Answer}");
         if (resp.Result.Citations.xIsNotEmpty())
         {
-            Console.WriteLine($"근거: {resp.Result.Citations.Select(m => $"{m.File}:{m.Page}").xJoin()}");
+            Console.WriteLine($"근거: {resp.Result.Citations.Select(m => $"{m.File.xValue<string>(string.Empty)}:{m.Page.xValue<int>(0)}").xJoin()}");
         }
-        return resp.Result.xSerialize();
+        return JsonSerializer.Serialize(resp.Result, opts);
     }
     
     int? ExtractYear(string file)
@@ -739,5 +739,5 @@ public class AnswerResult
 public class PageCitation
 {
     public string File { get; set; } = ""; // source_file_name (또는 DocId 권장)
-    public int Page { get; set; }          // 1-based page
+    public int? Page { get; set; }          // 1-based page
 }

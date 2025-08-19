@@ -52,8 +52,8 @@ builder.Services.AddSingleton<DocumentIntelligenceDemo>();
 
 var host = builder.Build();
 var service = host.Services.GetRequiredService<DocumentIntelligenceDemo>();
-//await service.CreateIndexAsync();
-//await service.UploadAsync();
+// await service.CreateIndexAsync();
+await service.UploadAsync();
 await service.SearchAsync();
 
 /*
