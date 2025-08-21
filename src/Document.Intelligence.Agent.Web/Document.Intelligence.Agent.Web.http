@@ -1,0 +1,6 @@
+@Document.Intelligence.Agent.Web_HostAddress = http://localhost:5130
+
+GET {{Document.Intelligence.Agent.Web_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
