@@ -4,7 +4,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Document.Intelligence.Agent
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Document.Intelligence.Agent.Test", "Document.Intelligence.Agent.Test\Document.Intelligence.Agent.Test.csproj", "{0644FF72-A864-4683-B9BE-5E4E38BB6B38}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Document.Intelligence.Agent.Web", "Document.Intelligence.Agent.Web\Document.Intelligence.Agent.Web.csproj", "{C3015395-EF9A-4744-8917-56401E77D653}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Document.Intelligence.Agent.Api", "Document.Intelligence.Agent.Api\Document.Intelligence.Agent.Api.csproj", "{C3015395-EF9A-4744-8917-56401E77D653}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Document.Intelligence.Agent.Worker", "Document.Intelligence.Agent.Worker\Document.Intelligence.Agent.Worker.csproj", "{80C0CB4F-4BC6-4A7D-B259-3420F32B9E6C}"
 EndProject

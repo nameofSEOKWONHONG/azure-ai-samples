@@ -1,5 +1,5 @@
-﻿using Document.Intelligence.Agent.Features.Document.AiSearch;
-using Document.Intelligence.Agent.Features.Document.Models;
+﻿using Document.Intelligence.Agent.Features.AiSearch;
+using Document.Intelligence.Agent.Features.Chat.Models;
 using Document.Intelligence.Agent.Features.Drm.M365;
 using Document.Intelligence.Agent.Infrastructure.Session;
 using eXtensionSharp;
@@ -137,7 +137,7 @@ public class ReceiptService : ServiceBase<ReceiptService>, IReceiptService
     /// 영수증 삭제 및 blob, ai search 삭제, db 기록 삭제
     /// </summary>
     /// <param name="id"></param>
-    public async Task DeleteReceiptAnalysisAsync(string id)
+    public Task DeleteReceiptAnalysisAsync(string id)
     {
         //db에서 id 찾기
         
@@ -146,5 +146,7 @@ public class ReceiptService : ServiceBase<ReceiptService>, IReceiptService
         //blob 파일 삭제
         
         //ai search index 삭제
+
+        return Task.CompletedTask;
     }
 }

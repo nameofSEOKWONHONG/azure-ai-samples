@@ -1,7 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace Document.Intelligence.Agent.Entities;
+namespace Document.Intelligence.Agent.Entities.Agent;
 
 /// <summary>
 /// DOCUMENT_AGENT_TOPIC SOURCE에 기록된 내역을 바탕으로 GRAPH API 연동 결과를 메타데이터화하여 기록한다.
@@ -11,7 +11,7 @@ namespace Document.Intelligence.Agent.Entities;
 public class DOCUMENT_AGENT_TOPIC_METADATA : DOCUMENT_ENTITY_BASE
 {
     public Guid DocumentAgentTopicId { get; set; }
-    public DOCUMENT_AGENT_TOPIC DocumentAgentTopic { get; set; }
+    public virtual DOCUMENT_AGENT_TOPIC DocumentAgentTopic { get; set; }
     
     public Guid Id { get; set; }
     
@@ -78,6 +78,7 @@ public class DocumentAgentTopicMetadataEntityConfiguration : IEntityTypeConfigur
 {
     public void Configure(EntityTypeBuilder<DOCUMENT_AGENT_TOPIC_METADATA> builder)
     {
+        builder.ToTable(nameof(DOCUMENT_AGENT_TOPIC_METADATA), "dbo");
         builder.HasKey(x => x.Id);
 
         builder.Property(x => x.SiteId).HasMaxLength(200);

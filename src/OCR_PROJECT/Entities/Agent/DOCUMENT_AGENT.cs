@@ -1,10 +1,13 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace Document.Intelligence.Agent.Entities;
+namespace Document.Intelligence.Agent.Entities.Agent;
+
+
 
 /// <summary>
 /// 사용자에게 할당될 에이전트 테이블
+/// TODO: 사용자별 AGENT 맵핑 테이블 필요함.
 /// </summary>
 public class DOCUMENT_AGENT : DOCUMENT_ENTITY_BASE
 {
@@ -13,6 +16,10 @@ public class DOCUMENT_AGENT : DOCUMENT_ENTITY_BASE
     /// 에이전트명
     /// </summary>
     public string Name { get; set; }
+    public string Description { get; set; }
+
+    public virtual ICollection<DOCUMENT_AGENT_PROMPT> DocumentAgentPrompts { get; set; } =
+        new List<DOCUMENT_AGENT_PROMPT>();
     
     public virtual ICollection<DOCUMENT_AGENT_TOPIC> DocumentAgentTopics { get; set; } = new List<DOCUMENT_AGENT_TOPIC>();
 }
@@ -39,6 +46,7 @@ public class DocumentAgentEntityConfiguration : IEntityTypeConfiguration<DOCUMEN
                     .OnDelete(DeleteBehavior.Cascade),
                 m =>
                 {
+                    m.ToTable(nameof(DOCUMENT_AGENT_TOPIC_MAP), "dbo");
                     m.HasKey(n => new {n.AgentId, n.TopicId});
                     m.ToTable(nameof(DOCUMENT_AGENT_TOPIC_MAP), "dbo");
                     m.HasIndex(n => n.IsEnabled);

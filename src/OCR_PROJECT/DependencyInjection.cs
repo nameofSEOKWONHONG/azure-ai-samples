@@ -6,15 +6,15 @@ using Azure.Identity;
 using Azure.Search.Documents;
 using Azure.Search.Documents.Indexes;
 using Azure.Storage.Blobs;
-using Azure.Storage.Blobs.Models;
 using Document.Intelligence.Agent.Entities;
-using Document.Intelligence.Agent.Features;
-using Document.Intelligence.Agent.Features.Document.AiSearch;
-using Document.Intelligence.Agent.Features.Document.Chat;
+using Document.Intelligence.Agent.Features.Agent;
+using Document.Intelligence.Agent.Features.AiSearch;
+using Document.Intelligence.Agent.Features.Chat;
 using Document.Intelligence.Agent.Features.Drm.M365;
 using Document.Intelligence.Agent.Features.Drm.M365.Models;
 using Document.Intelligence.Agent.Features.Graph;
 using Document.Intelligence.Agent.Features.Receipt;
+using Document.Intelligence.Agent.Features.Topic;
 using Document.Intelligence.Agent.Infrastructure.Session;
 using eXtensionSharp;
 using Microsoft.AspNetCore.Builder;
@@ -50,7 +50,7 @@ public static class DependencyInjection
             var service = new BlobServiceClient(configuration["OCR:AZURE_BLOB_STORAGE_CONNECTION"].xValue<string>());
             var container =
                 service.GetBlobContainerClient(configuration["OCR:AZURE_BLOB_STORAGE_CONTAINER"].xValue<string>());
-            container.CreateIfNotExists(PublicAccessType.None);
+            container.CreateIfNotExists();
             return container;
         });
         
@@ -73,9 +73,12 @@ public static class DependencyInjection
         services.AddHttpClient();
         services.AddHttpContextAccessor();
 
+        services.AddAgentService();
+        services.AddChatService();
+        services.AddTopicService(configuration);
+
         services.AddDrmHandler(configuration);
         services.AddReceiptService(configuration);
-        services.AddDocumentService(configuration);
     }
     
     /// <summary>
@@ -97,8 +100,8 @@ public static class DependencyInjection
     /// <param name="configuration"></param>
     private static void AddReceiptService(this IServiceCollection services, IConfiguration configuration)
     {   
-        var endpoint = new Uri(configuration["OCR:AZURE_OPENAI_ENDPOINT"]);
-        var apiKey = new ApiKeyCredential(configuration["OCR:AZURE_OPENAI_API_KEY"]);
+        var endpoint = new Uri(configuration["OCR:AZURE_OPENAI_ENDPOINT"].xValue<string>());
+        var apiKey = new ApiKeyCredential(configuration["OCR:AZURE_OPENAI_API_KEY"].xValue<string>());
         var chatDeployment = configuration["OCR:AZURE_OPENAI_GPT_NAME"];
         var embedDeployment = configuration["OCR:AZURE_OPENAI_EMBED_MODEL"];
         
@@ -138,31 +141,12 @@ public static class DependencyInjection
         services.AddScoped<IReceiptAiSearchService, ReceiptAiSearchService>();
     }
 
-    private static void AddDocumentService(this IServiceCollection services, IConfiguration configuration)
+    public static Task UseDiaService(this WebApplication application)
     {
-        services.AddKeyedScoped(INDEX_CONST.DOCUMENT_INDEX, (_, _) => new SearchClient(
-            new Uri(configuration["OCR:AZURE_AI_SEARCH_ENDPOINT"].xValue<string>()),
-            "document-v1",
-            new AzureKeyCredential(configuration["OCR:AZURE_AI_SEARCH_API_KEY"].xValue<string>())
-        ));
-
-        #region [문서 데이터 관리]
-
-        services.AddScoped<ICreateDocumentIndexService, CreateDocumentIndexService>();
-        services.AddScoped<IUploadDocumentService, UploadDocumentService>();        
-
-        #endregion
-
-        #region [문서 LLM 채팅 관리]
-
-        services.AddScoped<IChatService, ChatService>();
-        services.AddScoped<IQuestionContextSwitchService, QuestionContextSwitchService>();        
-
-        #endregion
-    }
-
-    public static Task UseOcrService(this WebApplication application)
-    {
+        application.MapAgentEndpoint();
+        application.MapChatEndpoint();
+        application.MapTopicEndpoint();
+        
         // ArgumentException.ThrowIfNullOrWhiteSpace(application.Configuration["DRM:IDA:CLIENT_ID"].xValue<string>());
         // ArgumentException.ThrowIfNullOrWhiteSpace(application.Configuration["DRM:IDA:REDIRECT_URI"].xValue<string>());
         // ArgumentException.ThrowIfNullOrWhiteSpace(application.Configuration["DRM:IDA:CERT_THUMB_PRINT"].xValue<string>());

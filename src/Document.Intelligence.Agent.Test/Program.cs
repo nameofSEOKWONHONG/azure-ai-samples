@@ -1,11 +1,8 @@
-using System.Diagnostics;
 using Azure.Identity;
+using Azure.Messaging.ServiceBus;
 using Document.Intelligence.Agent;
 using Document.Intelligence.Agent.Entities;
-using Document.Intelligence.Agent.Features.Document.Chat;
-using Document.Intelligence.Agent.Features.Document.Models;
-using Document.Intelligence.Agent.Features.Graph;
-using DocumentFormat.OpenXml.Packaging;
+using Document.Intelligence.Agent.Test;
 using eXtensionSharp;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Graph;
@@ -36,6 +33,22 @@ builder.Services.AddDbContext<DiaDbContext>(optionsBuilder =>
 
 builder.Services.AddDiaService(builder.Configuration);
 
+builder.Services.AddSingleton<ServiceBusClient>(sp =>
+{
+    var con = sp.GetRequiredService<IConfiguration>();
+    return new ServiceBusClient(con["OCR:AZURE_SERVICE_BUS_ENDPOINT"]);
+});
+builder.Services.AddKeyedScoped("SENDER", (sp, _) =>
+{
+    var client = sp.GetRequiredService<ServiceBusClient>();
+    return client.CreateSender("indexing-queue");
+});
+builder.Services.AddKeyedScoped("RECEIVER", (sp,_) =>
+{
+    var client = sp.GetRequiredService<ServiceBusClient>();
+    return client.CreateReceiver("indexing-queue");
+});
+
 var tenantId     = builder.Configuration["GRAPH:TENANT"];
 var clientId     = builder.Configuration["GRAPH:CLIENT_ID"];
 var clientSecret = builder.Configuration["GRAPH:CLIENT_SECRET"];
@@ -48,6 +61,7 @@ var credential = new ClientSecretCredential(tenantId, clientId, clientSecret);
 var scopes = new[] { authUrl };
         
 builder.Services.AddScoped(_ => new GraphServiceClient(credential, scopes));
+builder.Services.AddScoped<GraphApiSample>();
 
 Log.Logger.Information("Starting app...");
 try
@@ -121,56 +135,28 @@ try
 
     #endregion
 
-    var graph = scope.ServiceProvider.GetRequiredService<GraphServiceClient>();
-    var sites = await graph.Sites.GetAsync(m =>
-    {
-        m.QueryParameters.Search = "gowitco";
-        m.QueryParameters.Top = 50;
-        m.QueryParameters.Select = ["id","name","displayName","webUrl","siteCollection"];
-    });
-    var selectedSite = sites.Value.First(m => m.DisplayName == "CS팀");
-    var drives = await graph.Sites[selectedSite.Id].Drives.GetAsync(r =>
-    {
-        r.QueryParameters.Select = ["id", "name", "driveType", "webUrl"];
-        r.QueryParameters.Top = 50;
-    });
-    var selectedDrive = drives.Value.First(m => m.Name == "문서");
-    var items = await graph.Drives[selectedDrive.Id].Items["root"].Children
-        .GetAsync(r =>
-        {
-            r.QueryParameters.Top = 200;
-        });
+    #region [graph api sample]
 
-    if (items.xIsNotEmpty())
-    {
-        var files = items.Value.Where(m => m.File != null).ToList();
-        var selectedFiles = files.Where(m =>
-            m.File.MimeType == "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
-            m.File.MimeType == "application/msword").ToList();
-        if(selectedFiles.xIsNotEmpty())
-        {
-            var driveId = selectedFiles[0].ParentReference.DriveId;
-            var itemId = selectedFiles[0].Id;
-            var item = await graph.Drives[driveId].Items[itemId].GetAsync(r => r.QueryParameters.Select =
-                ["name", "file", "size", "fileSystemInfo"]);
+    // var service = scope.ServiceProvider.GetRequiredService<GraphApiSample>();
+    // await service.RunAsync();    
 
-            await using (var content = await graph.Drives[driveId].Items[itemId].Content.GetAsync())
-            {
-                await using (var fs = File.Create($"./{selectedFiles[0].Name}"))
-                {
-                    await content.CopyToAsync(fs);    
-                }
-            }
-            
-            await using var stream = File.OpenRead($"./{selectedFiles[0].Name}");
-            using var doc = WordprocessingDocument.Open(stream, false);
-            var text = doc.MainDocumentPart.Document.Body.Descendants<DocumentFormat.OpenXml.Wordprocessing.Text>();
-            if (text.xIsNotEmpty())
-            {
-                
-            }
-        }
-    }
+    #endregion
+
+    var serviceBusSender = scope.ServiceProvider.GetRequiredKeyedService<ServiceBusSender>("SENDER");
+    var body = new
+    {
+        Title = "test",
+        Name = "hello",
+        Tag = "world"
+    };
+    var message = new ServiceBusMessage(body.xSerialize());
+    await serviceBusSender.SendMessageAsync(message);
+
+    var serviceBusReceiver = scope.ServiceProvider.GetRequiredKeyedService<ServiceBusReceiver>("RECEIVER");
+    var recv = await serviceBusReceiver.ReceiveMessageAsync();
+    var jsonObj = recv.Body.ToObjectFromJson<dynamic>();
+    Log.Logger.Information("IsMatch: {match}",jsonObj.Title == "test");
+
 
 }
 catch (Exception ex)

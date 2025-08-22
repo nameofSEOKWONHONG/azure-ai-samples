@@ -1,4 +1,6 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Document.Intelligence.Agent.Entities.Agent;
+using Document.Intelligence.Agent.Entities.Chat;
+using Microsoft.EntityFrameworkCore;
 
 namespace Document.Intelligence.Agent.Entities;
 
@@ -13,20 +15,39 @@ public class DiaDbContext: DbContext
     {
         modelBuilder.UseCollation("Korean_Wansung_CI_AS");
 
-        modelBuilder.ApplyConfiguration(new DocumentThreadEntityConfiguration());
-        modelBuilder.ApplyConfiguration(new DocumentQuestionEntityConfiguration());
-        modelBuilder.ApplyConfiguration(new DocumentQuestionResearchEntityConfiguration());
-        modelBuilder.ApplyConfiguration(new DocumentAnswerEntityConfiguration());
-        modelBuilder.ApplyConfiguration(new DocumentCitationEntityConfiguration());
+        modelBuilder.ApplyConfiguration(new DocumentAgentUserMappingEntityConfiguration());
+        modelBuilder.ApplyConfiguration(new DocumentAgentEntityConfiguration());
+        modelBuilder.ApplyConfiguration(new DocumentAgentPromptEntityConfiguration());
+        modelBuilder.ApplyConfiguration(new DocumentAgentTopicEntityConfiguration());
+        modelBuilder.ApplyConfiguration(new DocumentAgentTopicMetadataEntityConfiguration());
+        modelBuilder.ApplyConfiguration(new DocumentAgentTopicResourceLogEntityConfiguration());
+
+        modelBuilder.ApplyConfiguration(new DocumentChatThreadEntityConfiguration());
+        modelBuilder.ApplyConfiguration(new DocumentChatQuestionEntityConfiguration());
+        modelBuilder.ApplyConfiguration(new DocumentChatQuestionResearchEntityConfiguration());
+        modelBuilder.ApplyConfiguration(new DocumentChatAnswerEntityConfiguration());
+        modelBuilder.ApplyConfiguration(new DocumentChatAnswerCitationEntityConfiguration());
     }
+
+    #region [agent]
+
+    public DbSet<DOCUMENT_AGENT_USER_MAPPING> AgentUserMappings { get; set; }
+    public DbSet<DOCUMENT_AGENT> Agents { get; set; }
+    public DbSet<DOCUMENT_AGENT_PROMPT> AgentPrompts { get; set; }
+    public DbSet<DOCUMENT_AGENT_TOPIC> AgentTopics { get; set; }
+    public DbSet<DOCUMENT_AGENT_TOPIC_MAP> AgentTopicMaps { get; set; }
+    public DbSet<DOCUMENT_AGENT_TOPIC_METADATA> AgentTopicMetadatas { get; set; }
+    public DbSet<DOCUMENT_AGENT_TOPIC_RESOURCE_LOG> AgentTopicResourceLogs { get; set; }
+
+    #endregion
 
     #region [chat]
 
-    public DbSet<DOCUMENT_THREAD> Threads { get; set; }
-    public DbSet<DOCUMENT_QUESTION> Questions { get; set; }
-    public DbSet<DOCUMENT_QUESTION_RESEARCH> QuestionResearches { get; set; }
-    public DbSet<DOCUMENT_ANSWER> Answers { get; set; }
-    public DbSet<DOCUMENT_CITATION> Citations { get; set; }    
+    public DbSet<DOCUMENT_CHAT_THREAD> ChatThreads { get; set; }
+    public DbSet<DOCUMENT_CHAT_QUESTION> ChatQuestions { get; set; }
+    public DbSet<DOCUMENT_CHAT_QUESTION_RESEARCH> ChatQuestionResearches { get; set; }
+    public DbSet<DOCUMENT_CHAT_ANSWER> ChatAnswers { get; set; }
+    public DbSet<DOCUMENT_CHAT_ANSWER_CITATION> ChatAnswerCitations { get; set; }    
 
     #endregion
 }
