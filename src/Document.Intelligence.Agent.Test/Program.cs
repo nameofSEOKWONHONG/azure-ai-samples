@@ -3,6 +3,7 @@ using Azure.Messaging.ServiceBus;
 using Document.Intelligence.Agent;
 using Document.Intelligence.Agent.Entities;
 using Document.Intelligence.Agent.Test;
+using DocumentFormat.OpenXml.Drawing.Diagrams;
 using eXtensionSharp;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Graph;
@@ -142,20 +143,23 @@ try
 
     #endregion
 
-    var serviceBusSender = scope.ServiceProvider.GetRequiredKeyedService<ServiceBusSender>("SENDER");
-    var body = new
-    {
-        Title = "test",
-        Name = "hello",
-        Tag = "world"
-    };
-    var message = new ServiceBusMessage(body.xSerialize());
-    await serviceBusSender.SendMessageAsync(message);
+    // var serviceBusSender = scope.ServiceProvider.GetRequiredKeyedService<ServiceBusSender>("SENDER");
+    // var body = new
+    // {
+    //     Title = "test",
+    //     Name = "hello",
+    //     Tag = "world"
+    // };
+    // var message = new ServiceBusMessage(body.xSerialize());
+    // await serviceBusSender.SendMessageAsync(message);
 
     var serviceBusReceiver = scope.ServiceProvider.GetRequiredKeyedService<ServiceBusReceiver>("RECEIVER");
     var recv = await serviceBusReceiver.ReceiveMessageAsync();
-    var jsonObj = recv.Body.ToObjectFromJson<dynamic>();
-    Log.Logger.Information("IsMatch: {match}",jsonObj.Title == "test");
+    var message = recv.Body.ToObjectFromJson<Message>();
+    await serviceBusReceiver.CompleteMessageAsync(recv);
+    //or
+    //await serviceBusReceiver.DeadLetterMessageAsync(recv, "실패사유");
+    Log.Logger.Information("Id:{id}, Title:{title}, Name:{name}, Tag:{tag}", message.Id, message.Title, message.Name, message.Tag);
 
 
 }
@@ -167,4 +171,12 @@ finally
 {
     Log.Logger.Debug("Ending app...");
     Log.CloseAndFlush();
+}
+
+class Message
+{
+    public Guid Id { get; set; }
+    public string Title { get; set; }
+    public string Name { get; set; }
+    public string Tag { get; set; }
 }

@@ -7,12 +7,12 @@ using Microsoft.Extensions.Logging;
 
 namespace Document.Intelligence.Agent.Features.AiSearch;
 
-public interface ICreateDocumentIndexService : IDiaExecuteServiceBase<string, bool>;
+public interface ICreateDocumentIndexService : IDiaExecuteServiceBase<string, Results<bool>>;
 
 /// <summary>
 /// 문서 인덱스 생성
 /// </summary>
-public class CreateDocumentIndexService: DiaExecuteServiceBase<CreateDocumentIndexService, DiaDbContext, string, bool>, ICreateDocumentIndexService
+public class CreateDocumentIndexService: DiaExecuteServiceBase<CreateDocumentIndexService, DiaDbContext, string, Results<bool>>, ICreateDocumentIndexService
 {
     private readonly SearchIndexClient _searchIndexClient;
 
@@ -22,12 +22,12 @@ public class CreateDocumentIndexService: DiaExecuteServiceBase<CreateDocumentInd
         _searchIndexClient = searchIndexClient;
     }
 
-    public override async Task<Results<bool>> ExecuteAsync(string request)
+    public override async Task<Results<bool>> ExecuteAsync(string request, CancellationToken ct = default)
     {
         bool isExcept = false;
         try
         {
-            await _searchIndexClient.GetIndexAsync(request);
+            await _searchIndexClient.GetIndexAsync(request, ct);
         }
         catch (Exception e)
         {
@@ -132,7 +132,7 @@ public class CreateDocumentIndexService: DiaExecuteServiceBase<CreateDocumentInd
             }
         };
 
-        await _searchIndexClient.CreateOrUpdateIndexAsync(index);
+        await _searchIndexClient.CreateOrUpdateIndexAsync(index, cancellationToken: ct);
 
         return await Results<bool>.SuccessAsync(true);
     }

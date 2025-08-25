@@ -6,12 +6,12 @@ using Microsoft.Extensions.Logging;
 
 namespace Document.Intelligence.Agent.Features.AiSearch;
 
-public interface IUploadDocumentService : IDiaExecuteServiceBase<string, bool>;
+public interface IUploadDocumentService : IDiaExecuteServiceBase<string, Results<bool>>;
 
 /// <summary>
 /// 첨부 파일 또는 blob storage의 파일을 AI SEARCH INDEX로 업로드 함. 로컬 파일일 경우 blob storage에 업로드 후 AI SEARCH INDEX 업로드를 진행. 유사 파일을 링크로 열 수 있도록 파일은 모두 blob으로 업로드 한다.
 /// </summary>
-public class UploadDocumentService: DiaExecuteServiceBase<UploadDocumentService, DiaDbContext, string, bool>, IUploadDocumentService
+public class UploadDocumentService: DiaExecuteServiceBase<UploadDocumentService, DiaDbContext, string, Results<bool>>, IUploadDocumentService
 {
     private readonly DocumentIntelligenceClient _documentIntelligenceClient;
 
@@ -22,7 +22,7 @@ public class UploadDocumentService: DiaExecuteServiceBase<UploadDocumentService,
         _documentIntelligenceClient = documentIntelligenceClient;
     }
 
-    public override async Task<Results<bool>> ExecuteAsync(string request)
+    public override async Task<Results<bool>> ExecuteAsync(string request, CancellationToken ct = default)
     {
         var isLocal = Uri.TryCreate(request, UriKind.RelativeOrAbsolute, out Uri address);
         if (isLocal)

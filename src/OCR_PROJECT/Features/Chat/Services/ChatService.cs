@@ -16,12 +16,12 @@ using ChatMessage = Microsoft.Extensions.AI.ChatMessage;
 
 namespace Document.Intelligence.Agent.Features.Chat.Services;
 
-public interface IChatService : IDiaExecuteServiceBase<ChatRequest, DocumentChatResult>;
+public interface IChatService : IDiaExecuteServiceBase<ChatRequest, Results<DocumentChatResult>>;
 
 /// <summary>
 /// AI SEARCH를 이용한 LLM 대화 서비스
 /// </summary>
-public class ChatService: DiaExecuteServiceBase<ChatService, DiaDbContext,  ChatRequest, DocumentChatResult>, IChatService
+public class ChatService: DiaExecuteServiceBase<ChatService, DiaDbContext,  ChatRequest, Results<DocumentChatResult>>, IChatService
 {
     private readonly IChatClient _chatClient;
     private readonly SearchClient _searchClient;
@@ -40,7 +40,7 @@ public class ChatService: DiaExecuteServiceBase<ChatService, DiaDbContext,  Chat
         _questionContextSwitchService = questionContextSwitchService;
     }
     
-    public override async Task<Results<DocumentChatResult>> ExecuteAsync(ChatRequest request)
+    public override async Task<Results<DocumentChatResult>> ExecuteAsync(ChatRequest request, CancellationToken ct = default)
     {
         const int maxRetries = 3;
         Exception lastEx = null;
@@ -53,7 +53,7 @@ public class ChatService: DiaExecuteServiceBase<ChatService, DiaDbContext,  Chat
             try
             {
                 var thread = await this.dbContext.ChatThreads.Where(m => m.Id == request.ThreadId)
-                    .FirstOrDefaultAsync();
+                    .FirstOrDefaultAsync(cancellationToken: ct);
 
                 if (thread.xIsEmpty())
                 {
@@ -63,7 +63,7 @@ public class ChatService: DiaExecuteServiceBase<ChatService, DiaDbContext,  Chat
                         new ChatMessage(ChatRole.System, LlmConst.QUESTION_SUMMARY),
                         new ChatMessage(ChatRole.User, request.CurrentQuestion)
                     };
-                    var resp = await _chatClient.GetResponseAsync<string>(messages);
+                    var resp = await _chatClient.GetResponseAsync<string>(messages, cancellationToken: ct);
                     var title = resp.Result.Trim();
                     thread = new DOCUMENT_CHAT_THREAD()
                     {
@@ -75,7 +75,7 @@ public class ChatService: DiaExecuteServiceBase<ChatService, DiaDbContext,  Chat
                     await this.dbContext.ChatThreads.AddAsync(thread);
                 }
             
-                var currentQuestionVector = await _embeddingGenerator.GenerateVectorAsync(request.CurrentQuestion);
+                var currentQuestionVector = await _embeddingGenerator.GenerateVectorAsync(request.CurrentQuestion, cancellationToken: ct);
                 var question = new DOCUMENT_CHAT_QUESTION()
                 {
                     ThreadId = thread.Id,
@@ -104,7 +104,7 @@ public class ChatService: DiaExecuteServiceBase<ChatService, DiaDbContext,  Chat
                 bool isContextSwitch = false;
                 if (previous.xIsNotEmpty())
                 {
-                    var switchResult = await _questionContextSwitchService.ExecuteAsync(
+                    isContextSwitch = await _questionContextSwitchService.ExecuteAsync(
                         new SearchDocumentContextSwitchRequest(
                             //이전
                             previous.Question,
@@ -116,8 +116,7 @@ public class ChatService: DiaExecuteServiceBase<ChatService, DiaDbContext,  Chat
                             question.QuestionVector,
                             question.QueryPlan,
                             question.ChunkIdList
-                        ));
-                    isContextSwitch = switchResult.Data;
+                        ), ct);
                 }
                 
                 var result = await AskFromGpt(planResult.researches, thread.Id, request.CurrentQuestion, isContextSwitch);
@@ -137,8 +136,8 @@ public class ChatService: DiaExecuteServiceBase<ChatService, DiaDbContext,  Chat
                     Answer = result.Answer,
                     Citations = cleanCitations,
                 };
-                await this.dbContext.ChatAnswers.AddAsync(answer);
-                await this.dbContext.SaveChangesAsync();
+                await this.dbContext.ChatAnswers.AddAsync(answer, ct);
+                await this.dbContext.SaveChangesAsync(ct);
 
                 return await Results<DocumentChatResult>.SuccessAsync(new DocumentChatResult
                 {
@@ -152,7 +151,7 @@ public class ChatService: DiaExecuteServiceBase<ChatService, DiaDbContext,  Chat
             {
                 lastEx = e;
                 this.logger.LogError(e, "{name} Error: {message}", nameof(ChatService), e.Message);
-                await Task.Delay(500);
+                await Task.Delay(500, ct);
             }
         }
 

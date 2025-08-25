@@ -20,7 +20,6 @@ public class DiaDbContext: DbContext
         modelBuilder.ApplyConfiguration(new DocumentAgentPromptEntityConfiguration());
         modelBuilder.ApplyConfiguration(new DocumentAgentTopicEntityConfiguration());
         modelBuilder.ApplyConfiguration(new DocumentAgentTopicMetadataEntityConfiguration());
-        modelBuilder.ApplyConfiguration(new DocumentAgentTopicResourceLogEntityConfiguration());
 
         modelBuilder.ApplyConfiguration(new DocumentChatThreadEntityConfiguration());
         modelBuilder.ApplyConfiguration(new DocumentChatQuestionEntityConfiguration());
@@ -37,7 +36,6 @@ public class DiaDbContext: DbContext
     public DbSet<DOCUMENT_AGENT_TOPIC> AgentTopics { get; set; }
     public DbSet<DOCUMENT_AGENT_TOPIC_MAP> AgentTopicMaps { get; set; }
     public DbSet<DOCUMENT_AGENT_TOPIC_METADATA> AgentTopicMetadatas { get; set; }
-    public DbSet<DOCUMENT_AGENT_TOPIC_RESOURCE_LOG> AgentTopicResourceLogs { get; set; }
 
     #endregion
 

@@ -17,16 +17,16 @@ public record GetThreadDetailRequest
 public record GetThreadDetailResult(Guid Id, string Question, string Answer, IEnumerable<DOCUMENT_CHAT_ANSWER_CITATION> Citations);
 
 public interface
-    IGetThreadDetailService : IDiaExecuteServiceBase<GetThreadDetailRequest, IEnumerable<GetThreadDetailResult>>;
+    IGetThreadDetailService : IDiaExecuteServiceBase<GetThreadDetailRequest, Results<IEnumerable<GetThreadDetailResult>>>;
 
-public class GetThreadDetailService: DiaExecuteServiceBase<GetThreadDetailService, DiaDbContext, GetThreadDetailRequest, IEnumerable<GetThreadDetailResult>>, IGetThreadDetailService
+public class GetThreadDetailService: DiaExecuteServiceBase<GetThreadDetailService, DiaDbContext, GetThreadDetailRequest, Results<IEnumerable<GetThreadDetailResult>>>, IGetThreadDetailService
 {
     public GetThreadDetailService(ILogger<GetThreadDetailService> logger, IDiaSessionContext session,
         DiaDbContext dbContext) : base(logger, session, dbContext)
     {
     }
 
-    public override async Task<Results<IEnumerable<GetThreadDetailResult>>> ExecuteAsync(GetThreadDetailRequest request)
+    public override async Task<Results<IEnumerable<GetThreadDetailResult>>> ExecuteAsync(GetThreadDetailRequest request, CancellationToken ct = default)
     {
         if (request.Cursor.xIsEmpty())
         {
@@ -42,7 +42,7 @@ public class GetThreadDetailService: DiaExecuteServiceBase<GetThreadDetailServic
             .Take(30)
             .Select(m =>
                 new GetThreadDetailResult(m.Id, m.Question, m.Answers.First().Answer, m.Answers.First().Citations))
-            .ToListAsync();
+            .ToListAsync(cancellationToken: ct);
 
         return await Results<IEnumerable<GetThreadDetailResult>>.SuccessAsync(result);
     }

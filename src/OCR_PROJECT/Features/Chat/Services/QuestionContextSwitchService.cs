@@ -25,7 +25,7 @@ public class QuestionContextSwitchService: DiaExecuteServiceBase<QuestionContext
         _chatClient = chatClient;
     }
 
-    public override async Task<Results<bool>> ExecuteAsync(SearchDocumentContextSwitchRequest request)
+    public override async Task<bool> ExecuteAsync(SearchDocumentContextSwitchRequest request, CancellationToken ct = default)
     {
         var previousEntities = ExtractEntities(request.PreviousQuestion);
         var currentEntities = ExtractEntities(request.CurrentQuestion);
@@ -44,8 +44,8 @@ public class QuestionContextSwitchService: DiaExecuteServiceBase<QuestionContext
             new ChatMessage(ChatRole.System, LlmConst.QUESTION_CONTEXT_SWITCH_PROMPT),
             new ChatMessage(ChatRole.User, contextMetrics.xSerialize())
         };
-        var resp = await _chatClient.GetResponseAsync<ShiftResult>(messages);
-        return await Results<bool>.SuccessAsync(resp.Result.IsShift);
+        var resp = await _chatClient.GetResponseAsync<ShiftResult>(messages, cancellationToken: ct);
+        return resp.Result.IsShift;
     }
     
     private static bool IsNewTopicHeuristic(string text)

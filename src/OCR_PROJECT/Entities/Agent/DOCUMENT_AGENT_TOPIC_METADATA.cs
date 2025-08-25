@@ -17,39 +17,16 @@ public class DOCUMENT_AGENT_TOPIC_METADATA : DOCUMENT_ENTITY_BASE
     
     public string SiteId { get; set; }
     public string DriveId { get; set; }
-    /// <summary>
-    /// 리스트 API 사용 시
-    /// </summary>
-    public string ListId { get; set; }
-    /// <summary>
-    /// driveItem id (고유)
-    /// </summary>
     public string ItemId { get; set; }
     
-    // 부모/경로
-    public string ParentDriveId { get; set; }
-    public string ParentItemId { get; set; }
     /// <summary>
     /// /drive/root:/HR/2025/복지.pdf
     /// </summary>
-    public string Path { get; set; }            
-    /// <summary>
-    /// /drive/root:/HR/2025
-    /// </summary>
-    public string ParentReferencePath { get; set; }
-    /// <summary>
-    /// Path로부터 계산한 깊이
-    /// </summary>
-    public int Depth { get; set; }
-    
-    /// <summary>
-    /// 파일명
-    /// </summary>
-    public string FileName { get; set; }
+    public string Path { get; set; }
     /// <summary>
     /// 비교를 위한 HASH
     /// </summary>
-    public string FileHash { get; set; }
+    public string PathHash { get; set; }
     /// <summary>
     /// 작성자
     /// </summary>
@@ -57,7 +34,7 @@ public class DOCUMENT_AGENT_TOPIC_METADATA : DOCUMENT_ENTITY_BASE
     /// <summary>
     /// 작성일
     /// </summary>
-    public DateTime CreatedDate { get; set; }
+    public DateTime? CreatedDate { get; set; }
     /// <summary>
     /// 수정자
     /// </summary>
@@ -71,7 +48,19 @@ public class DOCUMENT_AGENT_TOPIC_METADATA : DOCUMENT_ENTITY_BASE
     /// </summary>
     public string[] Keyword { get; set; }
     
-    public virtual ICollection<DOCUMENT_AGENT_TOPIC_RESOURCE_LOG> DocumentAgentTopicResourceLogs { get; set; }
+    /// <summary>
+    /// 처리 상태 (대기, 처리중, 완료, 에러)
+    /// <see cref="AgentTopicMetadataStatus"/>
+    /// </summary>
+    public string Status { get; set; }
+    /// <summary>
+    /// 메세지
+    /// </summary>
+    public string Message { get; set; }
+    /// <summary>
+    /// 상태별 사유 (에러 메세지)
+    /// </summary>
+    public string Reason { get; set; }
 }
 
 public class DocumentAgentTopicMetadataEntityConfiguration : IEntityTypeConfiguration<DOCUMENT_AGENT_TOPIC_METADATA>
@@ -83,22 +72,36 @@ public class DocumentAgentTopicMetadataEntityConfiguration : IEntityTypeConfigur
 
         builder.Property(x => x.SiteId).HasMaxLength(200);
         builder.Property(x => x.DriveId).HasMaxLength(200);
-        builder.Property(x => x.ListId).HasMaxLength(200);
         builder.Property(x => x.ItemId).HasMaxLength(200);
 
         builder.Property(x => x.Path).HasMaxLength(1000);
-        builder.Property(x => x.ParentReferencePath).HasMaxLength(1000);
 
-        builder.Property(x => x.FileName).HasMaxLength(500);
-        builder.Property(x => x.FileHash).HasMaxLength(200);
+        builder.Property(x => x.PathHash).HasMaxLength(200);
 
         builder.Property(x => x.Creator).HasMaxLength(200);
         builder.Property(x => x.Modifier).HasMaxLength(200);
-
-        // 관계: Metadata → Log (1:N)
-        builder.HasMany(x => x.DocumentAgentTopicResourceLogs)
-            .WithOne(x => x.DocumentAgentTopicMetadata)
-            .HasForeignKey(x => x.TopicMetadataId)
-            .OnDelete(DeleteBehavior.Cascade);
     }
+}
+
+public class AgentTopicMetadataStatus
+{
+    /// <summary>
+    /// 대기
+    /// </summary>
+    public const string READY = nameof(READY);
+    
+    /// <summary>
+    /// 처리중
+    /// </summary>
+    public const string PROCESSING = nameof(PROCESSING);
+    
+    /// <summary>
+    /// 완료
+    /// </summary>
+    public const string COMPLETE = nameof(COMPLETE);
+    
+    /// <summary>
+    /// 에러 - 에러에 포함된 MQ는 DROP 대상이며 재실행되지 않는다.
+    /// </summary>
+    public const string ERROR = nameof(ERROR);
 }

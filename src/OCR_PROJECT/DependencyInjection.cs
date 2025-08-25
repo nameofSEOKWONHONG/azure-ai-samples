@@ -3,6 +3,7 @@ using Azure;
 using Azure.AI.DocumentIntelligence;
 using Azure.AI.OpenAI;
 using Azure.Identity;
+using Azure.Messaging.ServiceBus;
 using Azure.Search.Documents;
 using Azure.Search.Documents.Indexes;
 using Azure.Storage.Blobs;
@@ -16,12 +17,14 @@ using Document.Intelligence.Agent.Features.Graph;
 using Document.Intelligence.Agent.Features.Receipt;
 using Document.Intelligence.Agent.Features.Topic;
 using Document.Intelligence.Agent.Infrastructure.Session;
+using Document.Intelligence.Agent.MessageQueue;
 using eXtensionSharp;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Microsoft.Graph;
 
 namespace Document.Intelligence.Agent;
@@ -57,7 +60,7 @@ public static class DependencyInjection
         var tenantId     = configuration["GRAPH:TENANT"];
         var clientId     = configuration["GRAPH:CLIENT_ID"];
         var clientSecret = configuration["GRAPH:CLIENT_SECRET"];
-        var authUrl = configuration["GRAPH:AUTH_URL"];
+        var authUrl      = configuration["GRAPH:AUTH_URL"];
 
         // Azure.Identity 자격증명
         var credential = new ClientSecretCredential(tenantId, clientId, clientSecret);
@@ -72,10 +75,36 @@ public static class DependencyInjection
         services.AddScoped<IDiaSessionContext, DiaSessionContext>();
         services.AddHttpClient();
         services.AddHttpContextAccessor();
+        
+        services.AddKeyedScoped(INDEX_CONST.DOCUMENT_INDEX, (_, _) => new SearchClient(
+            new Uri(configuration["OCR:AZURE_AI_SEARCH_ENDPOINT"].xValue<string>()),
+            "document-v1",
+            new AzureKeyCredential(configuration["OCR:AZURE_AI_SEARCH_API_KEY"].xValue<string>())
+        ));
+        
+        services.Configure<ServiceBusOptions>(configuration.GetSection("SERVICE_BUS"));
+        services.AddSingleton<ServiceBusClient>(sp =>
+            {
+                var con = sp.GetService<IOptions<ServiceBusOptions>>();
+                return new ServiceBusClient(con.Value.CONNECTION_STRING);
+            })
+            .AddSingleton(sp =>
+            {
+                var con = sp.GetService<IOptions<ServiceBusOptions>>();
+                var client = sp.GetRequiredService<ServiceBusClient>();
+                return client.CreateProcessor(con.Value.QUEUE_NAME);
+            });
+
+        #region [배그라운드 서비스용]
+        
+        services.AddHostedService<Worker>();
+        services.AddHostedService<DlqWorker>();        
+
+        #endregion
 
         services.AddAgentService();
         services.AddChatService();
-        services.AddTopicService(configuration);
+        services.AddTopicService();
 
         services.AddDrmHandler(configuration);
         services.AddReceiptService(configuration);
@@ -139,6 +168,8 @@ public static class DependencyInjection
         services.AddScoped<IReceiptService, ReceiptService>();
         services.AddScoped<IReceiptExtractService, ReceiptExtractService>();
         services.AddScoped<IReceiptAiSearchService, ReceiptAiSearchService>();
+
+
     }
 
     public static Task UseDiaService(this WebApplication application)

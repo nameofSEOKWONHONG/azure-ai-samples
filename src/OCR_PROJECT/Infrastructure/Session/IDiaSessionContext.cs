@@ -35,6 +35,15 @@ public class DiaSessionContext: IDiaSessionContext
             this.UserId = accessor.HttpContext.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             this.Email = accessor.HttpContext.User?.FindFirst(ClaimTypes.Email)?.Value;    
         }
+
+        #if DEBUG
+        if (!accessor.HttpContext.User.Identity.IsAuthenticated)
+        {
+            this.IsAdmin = true;
+            this.UserId = Guid.NewGuid().ToString();
+            this.Email = "test@test.com";
+        }
+        #endif
         this.SelectedLanguage = Thread.CurrentThread.CurrentUICulture.TwoLetterISOLanguageName;
     }
     

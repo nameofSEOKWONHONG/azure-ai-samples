@@ -19,12 +19,7 @@ public class DOCUMENT_AGENT_TOPIC : DOCUMENT_ENTITY_BASE
     /// </summary>
     public string Category { get; set; }
     
-    /// <summary>
-    /// GRAPH API 연동을 위한 폴더 및 파일 기록
-    /// </summary>
-    public string[] Source { get; set; }
-    
-    public virtual ICollection<DOCUMENT_AGENT_TOPIC_METADATA> DocumentAgentTopicResources { get; set; }
+    public virtual ICollection<DOCUMENT_AGENT_TOPIC_METADATA> DocumentAgentTopicMetadatas { get; set; }
 }
 
 public class DocumentAgentTopicEntityConfiguration: IEntityTypeConfiguration<DOCUMENT_AGENT_TOPIC>
@@ -33,6 +28,8 @@ public class DocumentAgentTopicEntityConfiguration: IEntityTypeConfiguration<DOC
     {
         builder.ToTable(nameof(DOCUMENT_AGENT_TOPIC), "dbo");
         builder.HasKey(x => x.Id);
+        builder.Property(m => m.Id)
+            .ValueGeneratedOnAdd();
         builder.Property(x => x.Name).HasMaxLength(200).IsRequired();
         builder.Property(x => x.Category).HasMaxLength(100).IsRequired();
 

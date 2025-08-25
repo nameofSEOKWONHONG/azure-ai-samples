@@ -26,7 +26,7 @@ public abstract class ServiceBase<TSelf>
 /// <typeparam name="TResult"></typeparam>
 public interface IDiaExecuteServiceBase<TRequest, TResult>
 {
-    Task<Results<TResult>> ExecuteAsync(TRequest request);
+    Task<TResult> ExecuteAsync(TRequest request, CancellationToken ct = default);
 }
 
 /// <summary>
@@ -61,7 +61,10 @@ public abstract class DiaExecuteServiceBase<TSelf, TDbContext, TRequest, TResult
     {
     }
 
-    public virtual Task<Results<TResult>> PreExecuteAsync(TRequest request) =>
-        Results<TResult>.SuccessAsync(default);
-    public abstract Task<Results<TResult>> ExecuteAsync(TRequest request);
+    public virtual Task<bool> PreExecuteAsync(TRequest request, CancellationToken ct = default)
+    {
+        return Task.FromResult(true);
+    }
+        
+    public abstract Task<TResult> ExecuteAsync(TRequest request, CancellationToken ct = default);
 }
