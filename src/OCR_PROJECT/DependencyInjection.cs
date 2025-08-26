@@ -179,8 +179,6 @@ public static class DependencyInjection
         services.AddScoped<IReceiptService, ReceiptService>();
         services.AddScoped<IReceiptExtractService, ReceiptExtractService>();
         services.AddScoped<IReceiptAiSearchService, ReceiptAiSearchService>();
-
-
     }
 
     public static Task UseDiaService(this WebApplication application)
