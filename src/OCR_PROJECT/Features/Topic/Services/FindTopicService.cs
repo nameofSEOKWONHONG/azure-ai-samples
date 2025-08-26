@@ -23,7 +23,7 @@ public class FindTopicService : DiaExecuteServiceBase<FindTopicService, DiaDbCon
     {
         var query = dbContext.Topics
             .AsNoTracking()
-            .Include(m => m.DocumentTopicMetadatum)
+            .Include(m => m.Metadatas)
             .AsQueryable();
         if (request.Keyword.xIsNotEmpty())
         {

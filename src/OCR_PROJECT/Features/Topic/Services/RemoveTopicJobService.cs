@@ -11,13 +11,13 @@ namespace Document.Intelligence.Agent.Features.Topic.Services;
 
 public record RemoveTopicMetadataRequest(Guid TopicId, Guid MetadataId);
 
-public interface IRemoveTopicMetadataService : IDiaExecuteServiceBase<RemoveTopicMetadataRequest, Results<bool>>;
+public interface IRemoveTopicJobService : IDiaExecuteServiceBase<RemoveTopicMetadataRequest, Results<bool>>;
 
-public class RemoveTopicMetadataService : DiaExecuteServiceBase<RemoveTopicMetadataService, DiaDbContext, RemoveTopicMetadataRequest, Results<bool>>, IRemoveTopicMetadataService
+public class RemoveTopicJobService : DiaExecuteServiceBase<RemoveTopicJobService, DiaDbContext, RemoveTopicMetadataRequest, Results<bool>>, IRemoveTopicJobService
 {
     private readonly ServiceBusSender _sender;
 
-    public RemoveTopicMetadataService(ILogger<RemoveTopicMetadataService> logger, IDiaSessionContext session, DiaDbContext dbContext, ServiceBusSender sender) : base(logger, session, dbContext)
+    public RemoveTopicJobService(ILogger<RemoveTopicJobService> logger, IDiaSessionContext session, DiaDbContext dbContext, ServiceBusSender sender) : base(logger, session, dbContext)
     {
         _sender = sender;
     }
@@ -25,7 +25,7 @@ public class RemoveTopicMetadataService : DiaExecuteServiceBase<RemoveTopicMetad
     public override async Task<Results<bool>> ExecuteAsync(RemoveTopicMetadataRequest request, CancellationToken ct = default)
     {
         var exists = await this.dbContext.TopicMetadatum.FirstAsync(m =>
-            m.Id == request.MetadataId && m.DocumentTopicId == request.TopicId, cancellationToken: ct);
+            m.Id == request.MetadataId && m.TopicId == request.TopicId, cancellationToken: ct);
 
         exists.IsDelete = true;
         exists.ModifiedId = this.session.UserId;
@@ -34,8 +34,8 @@ public class RemoveTopicMetadataService : DiaExecuteServiceBase<RemoveTopicMetad
         this.dbContext.TopicMetadatum.Update(exists);
         await this.dbContext.SaveChangesAsync(ct);
         
-        var sendItem = new TopicMetadataProcessItem(exists.DocumentTopicId.ToString(), string.Empty, exists.Id.ToString(), 
-            exists.Path, exists.DriveId, exists.ItemId, exists.IsFolder, true);
+        var sendItem = new TopicMetadataProcessItem(exists.TopicId, string.Empty, exists.JobId.GetValueOrDefault(), exists.Id,
+            exists.Path, exists.DriveId, exists.ItemId, false, true, session.UserId);
         var sessionId = $"{exists.Path}:{exists.DriveId}:{exists.ItemId}".xGetHashCode();
         var message = new ServiceBusMessage( BinaryData.FromObjectAsJson(sendItem))
         {

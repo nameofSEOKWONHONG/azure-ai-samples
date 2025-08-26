@@ -1,5 +1,7 @@
 ﻿using Azure.Messaging.ServiceBus;
+using Document.Intelligence.Agent.Entities;
 using Document.Intelligence.Agent.Features.Topic.Models;
+using Document.Intelligence.Agent.MessageQueue.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -52,59 +54,45 @@ public class Worker : BackgroundService
     {
         var msg = arg.Message;
 
+        await using var scope = _serviceScopeFactory.CreateAsyncScope();
+        var saveJobService = scope.ServiceProvider.GetRequiredService<ISaveMqJobService>();
+        var removeJobService = scope.ServiceProvider.GetRequiredService<IRemoveMqJobService>();
+        var dbContext = scope.ServiceProvider.GetRequiredService<DiaDbContext>();
         try
         {
             var received = msg.Body.ToObjectFromJson<TopicMetadataProcessItem>();
-            _logger.LogInformation("TopicId:{TopicId}, TopicName:{topicName}, MetadataId:{metadataId}, DriveId:{driveId}, ItemId:{itemId}, IsFolder:{isFolder}, IsDelete:{isDelete}", 
-                received.TopicId, received.TopicName, received.MetadataId, received.DriveId, received.ItemId, received.IsFolder, received.IsDelete);
+            _logger.LogInformation("Processing - TopicId:{TopicId}, TopicName:{topicName}, JobId:{jobId}, DriveId:{driveId}, ItemId:{itemId}, IsFolder:{isFolder}, IsDelete:{isDelete}", 
+                received.TopicId, received.TopicName, received.JobId, received.DriveId, received.ItemId, received.IsFolder, received.IsDelete);
             
             // simulation code.
             await Task.Delay((1000 * 60) * 3);
 
-            if (received.IsDelete)
+            var result = false;
+            if (!received.IsDelete)
             {
-                await Remove();
+                result = await saveJobService.ExecuteAsync(received, CancellationToken.None);
             }
             else
             {
-                await Save();    
+                result = await removeJobService.ExecuteAsync(received, CancellationToken.None);
             }
             
+            _logger.LogInformation("Processed - TopicId: {topicId}, TopicName: {topicName}, JobId: {jobId}, Statue: {status}", received.TopicId, received.TopicName, received.JobId, result);
             await arg.CompleteMessageAsync(msg);
         }
         catch (Exception e)
         {
             await arg.AbandonMessageAsync(msg);
             //write log
+            _logger.LogError(e, "Error: {error}", e.Message);
         }
-    }
-
-    private Task Save()
-    {
-        //TODO: WRITE LOGIC
-        // 1. 파일 다운로드
-        // 2. drm 해제
-        // 3. 문자 추출
-        // 4. indexing 형태에 따라 가공
-        // 5. index 업로드
-        // 6. DB에 index id 기록
-        
-        return Task.CompletedTask;
-    }
-
-    private Task Remove()
-    {
-        //TODO: WRITE LOGIC
-        // 1. DB 조회
-        // 2. INDEX 삭제
-        // 3. DB 플래그 처리해야 겠네... TOPIC 할당시 조회는 삭제 안보여줌. 로그에서는 보여줌.
-        return Task.CompletedTask;
     }
 
     private Task OnErrorAsync(ProcessErrorEventArgs arg)
     {
         //TODO: WRITE SYSTEM LOG
-        _logger.LogError(arg.Exception, "Processor error. Entity={Entity} Source={Source}", arg.EntityPath, arg.ErrorSource);
+        
+        _logger.LogError(arg.Exception, "Processor error. Identifier={Identifier} Entity={Entity} Source={Source}", arg.Identifier, arg.EntityPath, arg.ErrorSource);
         return Task.CompletedTask;
     }
 

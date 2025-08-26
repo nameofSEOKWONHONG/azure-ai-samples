@@ -21,11 +21,11 @@ public class GetTopicService: DiaExecuteServiceBase<GetTopicService, DiaDbContex
     public override async Task<Results<GetTopicResult>> ExecuteAsync(Guid request, CancellationToken ct = default)
     {
         var result = await this.dbContext.Topics
-            .Include(m => m.DocumentTopicMetadatum)
+            .Include(m => m.Metadatas)
             .AsNoTracking()
             .Where(m => m.Id == request)
             .Select(m => new GetTopicResult(m.Id, m.Name, m.Category, 
-                m.DocumentTopicMetadatum.Select(n => new TopicMetadata(n.Id, n.Path))))
+                m.Metadatas.Select(n => new TopicMetadata(n.Id, n.Path))))
             .FirstAsync(cancellationToken: ct);
 
         return await Results<GetTopicResult>.SuccessAsync(result);

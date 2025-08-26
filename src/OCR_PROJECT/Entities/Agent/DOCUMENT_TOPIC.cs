@@ -20,7 +20,9 @@ public class DOCUMENT_TOPIC : DOCUMENT_ENTITY_BASE
     /// </summary>
     public string Category { get; set; }
     
-    public virtual ICollection<DOCUMENT_TOPIC_METADATA> DocumentTopicMetadatum { get; set; }
+    public virtual ICollection<DOCUMENT_TOPIC_JOB> Jobs { get; set; } = new List<DOCUMENT_TOPIC_JOB>();
+
+    public virtual ICollection<DOCUMENT_TOPIC_METADATA> Metadatas { get; set; } = new List<DOCUMENT_TOPIC_METADATA>();
 }
 
 public class DocumentTopicEntityConfiguration: IEntityTypeConfiguration<DOCUMENT_TOPIC>
@@ -33,6 +35,15 @@ public class DocumentTopicEntityConfiguration: IEntityTypeConfiguration<DOCUMENT
             .ValueGeneratedOnAdd();
         builder.Property(x => x.Name).HasMaxLength(200).IsRequired();
         builder.Property(x => x.Category).HasMaxLength(100).IsRequired();
-
+        
+        builder.HasMany(x => x.Jobs)
+            .WithOne(x => x.Topic)
+            .HasForeignKey(x => x.TopicId)
+            .OnDelete(DeleteBehavior.Cascade);
+        
+        builder.HasMany(x => x.Metadatas)
+            .WithOne(x => x.Topic)
+            .HasForeignKey(x => x.TopicId)
+            .OnDelete(DeleteBehavior.Cascade);        
     }
 }

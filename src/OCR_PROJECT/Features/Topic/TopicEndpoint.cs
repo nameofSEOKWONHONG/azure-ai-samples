@@ -33,5 +33,17 @@ public static class TopicEndpoint
             => await service.ExecuteAsync(id, ct))
             .WithSummary("토픽 삭제")
             .AddEndpointFilter<TransactionFilter>();
+
+        group.MapPut("/metadata",
+            async ([FromBody]AddTopicMetadataRequest request, IAddTopicJobService service, CancellationToken ct)
+                => await service.ExecuteAsync(request, ct))
+            .WithSummary("토픽 잡/메타데이터 추가")
+            .AddEndpointFilter<TransactionFilter>()
+            ;
+        group.MapDelete("/metadata", async ([FromBody]RemoveTopicMetadataRequest request, IRemoveTopicJobService service, CancellationToken ct)
+                => await service.ExecuteAsync(request, ct))
+            .WithSummary("토픽 메타데이터 삭제")
+            .AddEndpointFilter<TransactionFilter>()
+            ;
     }
 }

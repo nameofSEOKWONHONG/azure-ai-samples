@@ -16,8 +16,10 @@ using Document.Intelligence.Agent.Features.Drm.M365.Models;
 using Document.Intelligence.Agent.Features.Graph;
 using Document.Intelligence.Agent.Features.Receipt;
 using Document.Intelligence.Agent.Features.Topic;
+using Document.Intelligence.Agent.Features.Topic.Services;
 using Document.Intelligence.Agent.Infrastructure.Session;
 using Document.Intelligence.Agent.MessageQueue;
+using Document.Intelligence.Agent.MessageQueue.Services;
 using eXtensionSharp;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
@@ -104,7 +106,10 @@ public static class DependencyInjection
         #region [배그라운드 서비스용]
         
         services.AddHostedService<Worker>();
-        services.AddHostedService<DlqWorker>();        
+        services.AddHostedService<DlqWorker>();
+        
+        services.AddScoped<IRemoveMqJobService, RemoveMqJobService>();
+        services.AddScoped<ISaveMqJobService, SaveMqJobService>();
 
         #endregion
 

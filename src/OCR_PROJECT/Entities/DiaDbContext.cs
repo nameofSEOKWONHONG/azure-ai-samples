@@ -39,6 +39,7 @@ public class DiaDbContext: DbContext
     #region [topic]
 
     public DbSet<DOCUMENT_TOPIC> Topics { get; set; }
+    public DbSet<DOCUMENT_TOPIC_JOB> TopicJobs { get; set; }
     public DbSet<DOCUMENT_TOPIC_METADATA> TopicMetadatum { get; set; }
     public DbSet<DOCUMENT_TOPIC_AGENT_MAP> TopicAgentMaps { get; set; }
 

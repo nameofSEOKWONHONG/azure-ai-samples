@@ -16,5 +16,7 @@ public static class DependencyInjection
         services.AddScoped<IFindTopicService, FindTopicService>();
         services.AddScoped<IGetTopicService, GetTopicService>();
         services.AddScoped<IRemoveTopicService, RemoveTopicService>();
+        services.AddScoped<IAddTopicJobService, AddTopicJobService>();
+        services.AddScoped<IRemoveTopicJobService, RemoveTopicJobService>();
     }
 }

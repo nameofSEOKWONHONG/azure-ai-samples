@@ -10,8 +10,8 @@ namespace Document.Intelligence.Agent.Entities.Agent;
 /// </summary>
 public class DOCUMENT_TOPIC_METADATA : DOCUMENT_ENTITY_BASE
 {
-    public Guid DocumentTopicId { get; set; }
-    public virtual DOCUMENT_TOPIC DocumentTopic { get; set; }
+    public Guid TopicId { get; set; }
+    public virtual DOCUMENT_TOPIC Topic { get; set; }
     
     public Guid Id { get; set; }
     
@@ -63,14 +63,16 @@ public class DOCUMENT_TOPIC_METADATA : DOCUMENT_ENTITY_BASE
     public string Reason { get; set; }
     
     /// <summary>
-    /// index upload된 ID 
+    /// index upload된 DOC_ID 
     /// </summary>
-    public string IndexId { get; set; }
+    public string IndexDocId { get; set; }
 
     /// <summary>
     /// 삭제 여부
     /// </summary>
     public bool IsDelete { get; set; }
+    
+    public Guid? JobId { get; set; }
 }
 
 public class DocumentTopicMetadataEntityConfiguration : IEntityTypeConfiguration<DOCUMENT_TOPIC_METADATA>
@@ -90,6 +92,15 @@ public class DocumentTopicMetadataEntityConfiguration : IEntityTypeConfiguration
 
         builder.Property(x => x.Creator).HasMaxLength(200);
         builder.Property(x => x.Modifier).HasMaxLength(200);   
+        
+        builder.Property(x => x.JobId)
+            .HasColumnName("LastJobId")
+            .IsRequired(false);        
+        
+        builder.HasOne(x => x.Topic)
+            .WithMany(x => x.Metadatas)
+            .HasForeignKey(x => x.TopicId)
+            .OnDelete(DeleteBehavior.Cascade);        
     }
 }
 
@@ -114,4 +125,9 @@ public class TopicMetadataStatus
     /// 에러 - 에러에 포함된 MQ는 DROP 대상이며 재실행되지 않는다.
     /// </summary>
     public const string ERROR = nameof(ERROR);
+
+    /// <summary>
+    /// 삭제
+    /// </summary>
+    public const string REMOVE = nameof(REMOVE);
 }

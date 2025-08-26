@@ -14,12 +14,12 @@ public interface ICreateTopicService : IDiaExecuteServiceBase<CreateTopicRequest
 
 public class CreateTopicService : DiaExecuteServiceBase<CreateTopicService, DiaDbContext, CreateTopicRequest, Results<Guid>>, ICreateTopicService
 {
-    private readonly IAddTopicMetadataService _addTopicMetadataService;
+    private readonly IAddTopicJobService _addTopicJobService;
 
-    public CreateTopicService(ILogger<CreateTopicService> logger, IDiaSessionContext session, DiaDbContext dbContext, IAddTopicMetadataService addTopicMetadataService) 
+    public CreateTopicService(ILogger<CreateTopicService> logger, IDiaSessionContext session, DiaDbContext dbContext, IAddTopicJobService addTopicJobService) 
         : base(logger, session, dbContext)
     {
-        _addTopicMetadataService = addTopicMetadataService;
+        _addTopicJobService = addTopicJobService;
     }
 
     public override async Task<Results<Guid>> ExecuteAsync(CreateTopicRequest request, CancellationToken ct = default)
@@ -40,7 +40,7 @@ public class CreateTopicService : DiaExecuteServiceBase<CreateTopicService, DiaD
             await dbContext.SaveChangesAsync(ct);
         }
         
-        await _addTopicMetadataService.ExecuteAsync(new AddTopicMetadataRequest(exists.Id, exists.Name, request.ObjectItems), ct);
+        await _addTopicJobService.ExecuteAsync(new AddTopicMetadataRequest(exists.Id, exists.Name, request.ObjectItems), ct);
         return await Results<Guid>.SuccessAsync(exists.Id);
     }
 }
