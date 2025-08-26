@@ -9,8 +9,13 @@ namespace Document.Intelligence.Agent.Entities.Agent;
 /// </summary>
 public class DOCUMENT_AGENT_USER_MAP : DOCUMENT_ENTITY_BASE
 {
-    public string UserId { get; set; }
-    public Guid DocumentAgentId { get; set; }
+    public Guid UserId { get; set; }
+    public Guid AgentId { get; set; }
+    
+    /// <summary>
+    /// 기본 선택 여부
+    /// </summary>
+    public bool IsDefault { get; set; }
 
     /// <summary>
     /// 근급 상황시 중단용
@@ -23,7 +28,7 @@ public class DocumentAgentUserMapEntityConfiguration: IEntityTypeConfiguration<D
     public void Configure(EntityTypeBuilder<DOCUMENT_AGENT_USER_MAP> builder)
     {
         builder.ToTable(nameof(DOCUMENT_AGENT_USER_MAP), "dbo");
-        builder.HasKey(m => new{m.UserId, m.DocumentAgentId});
+        builder.HasKey(m => new{m.UserId, DocumentAgentId = m.AgentId});
         builder.HasIndex(m => new { m.UserId, m.IsActive })
             .IsUnique(false);
     }

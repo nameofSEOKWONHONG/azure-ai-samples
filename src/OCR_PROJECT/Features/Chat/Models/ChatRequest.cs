@@ -3,6 +3,10 @@
 public class ChatRequest
 {
     /// <summary>
+    /// 선택된 AgentId
+    /// </summary>
+    public Guid? AgentId { get; set; }
+    /// <summary>
     /// 서버측에서 최초 발행한 THREAD GUID
     /// </summary>
     public Guid? ThreadId { get; set; }

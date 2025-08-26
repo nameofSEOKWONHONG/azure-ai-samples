@@ -11,15 +11,15 @@ public record FindTopicRequest(string Keyword, int Page =1, int PageSize = 10);
 
 public record FindTopicResult(Guid Id, string Name, string Category);
 
-public interface IFindTopicService: IDiaExecuteServiceBase<FindTopicRequest, PagedResult<FindTopicResult>>;
-public class FindTopicService : DiaExecuteServiceBase<FindTopicService, DiaDbContext, FindTopicRequest, PagedResult<FindTopicResult>>
+public interface IFindTopicService: IDiaExecuteServiceBase<FindTopicRequest, PagedResults<FindTopicResult>>;
+public class FindTopicService : DiaExecuteServiceBase<FindTopicService, DiaDbContext, FindTopicRequest, PagedResults<FindTopicResult>>
     , IFindTopicService
 {
     public FindTopicService(ILogger<FindTopicService> logger, IDiaSessionContext session, DiaDbContext dbContext) : base(logger, session, dbContext)
     {
     }
 
-    public override async Task<PagedResult<FindTopicResult>> ExecuteAsync(FindTopicRequest request, CancellationToken ct = default)
+    public override async Task<PagedResults<FindTopicResult>> ExecuteAsync(FindTopicRequest request, CancellationToken ct = default)
     {
         var query = dbContext.Topics
             .AsNoTracking()
@@ -37,6 +37,6 @@ public class FindTopicService : DiaExecuteServiceBase<FindTopicService, DiaDbCon
             .Select(m => new FindTopicResult(m.Id, m.Name, m.Category))
             .ToListAsync(cancellationToken: ct);
 
-        return await PagedResult<FindTopicResult>.SuccessAsync(result, total, request.Page, request.PageSize);
+        return await PagedResults<FindTopicResult>.SuccessAsync(result, total, request.Page, request.PageSize);
     }
 }

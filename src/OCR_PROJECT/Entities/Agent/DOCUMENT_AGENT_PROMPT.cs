@@ -11,8 +11,8 @@ namespace Document.Intelligence.Agent.Entities.Agent;
 /// </summary>
 public class DOCUMENT_AGENT_PROMPT
 {
-    public Guid DocumentAgentId { get; set; }
-    public virtual DOCUMENT_AGENT DocumentAgent { get; set; }
+    public Guid AgentId { get; set; }
+    public virtual DOCUMENT_AGENT Agent { get; set; }
     
     /// <summary>
     /// KEY
@@ -42,9 +42,9 @@ public class DocumentAgentPromptEntityConfiguration : IEntityTypeConfiguration<D
         builder.Property(m => m.Id)
             .ValueGeneratedOnAdd();
         
-        builder.HasOne(m => m.DocumentAgent)
-            .WithMany(m => m.DocumentAgentPrompts)
-            .HasForeignKey(m => m.DocumentAgentId)
+        builder.HasOne(m => m.Agent)
+            .WithMany(m => m.AgentPrompts)
+            .HasForeignKey(m => m.AgentId)
             .OnDelete(DeleteBehavior.Cascade);
     }
 }

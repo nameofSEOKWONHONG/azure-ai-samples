@@ -20,29 +20,33 @@ public static class TopicEndpoint
 
         group.MapGet("/", async ([AsParameters]FindTopicRequest request, IFindTopicService service, CancellationToken ct) 
             => await service.ExecuteAsync(request, ct))
-            .WithSummary("토픽 검색");
+            .WithDescription("토픽 검색")
+            ;
         group.MapGet("/{id}", async (Guid id, IGetTopicService service, CancellationToken ct) 
             => await service.ExecuteAsync(id, ct))
-            .WithSummary("토픽 조회");
+            .WithDescription("토픽 조회")
+            ;
         group.MapPost("/",
                 async ([FromBody]CreateTopicRequest request, ICreateTopicService service, CancellationToken ct)
                     => await service.ExecuteAsync(request, ct))
-            .WithSummary("토픽 생성")
-            .AddEndpointFilter<TransactionFilter>();
+            .WithDescription("토픽 생성")
+            .AddEndpointFilter<TransactionFilter>()
+            ;
         group.MapDelete("/{id}", async (Guid id, IRemoveTopicService service, CancellationToken ct)
             => await service.ExecuteAsync(id, ct))
-            .WithSummary("토픽 삭제")
-            .AddEndpointFilter<TransactionFilter>();
+            .WithDescription("토픽 삭제")
+            .AddEndpointFilter<TransactionFilter>()
+            ;
 
         group.MapPut("/metadata",
             async ([FromBody]AddTopicMetadataRequest request, IAddTopicJobService service, CancellationToken ct)
                 => await service.ExecuteAsync(request, ct))
-            .WithSummary("토픽 잡/메타데이터 추가")
+            .WithDescription("토픽 잡/메타데이터 추가")
             .AddEndpointFilter<TransactionFilter>()
             ;
         group.MapDelete("/metadata", async ([FromBody]RemoveTopicMetadataRequest request, IRemoveTopicJobService service, CancellationToken ct)
                 => await service.ExecuteAsync(request, ct))
-            .WithSummary("토픽 메타데이터 삭제")
+            .WithDescription("토픽 메타데이터 삭제")
             .AddEndpointFilter<TransactionFilter>()
             ;
     }

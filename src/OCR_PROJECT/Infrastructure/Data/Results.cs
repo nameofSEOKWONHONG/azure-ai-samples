@@ -18,16 +18,16 @@ public class Results<T>
     public static Task<Results<T>> FailAsync(IEnumerable<string> messages) => Task.FromResult(new Results<T>() {IsSucceed = false, Messages = messages});
 }
 
-public class PagedResult<T>
+public class PagedResults<T>
 {
-    public PagedResult(List<T> data)
+    public PagedResults(List<T> data)
     {
         Data = data;
     }
 
     public IEnumerable<T> Data { get; set; }
 
-    internal PagedResult(bool succeeded, IEnumerable<T> data = default, List<string> messages = null, int count = 0, int page = 1, int pageSize = 10)
+    internal PagedResults(bool succeeded, IEnumerable<T> data = default, List<string> messages = null, int count = 0, int page = 1, int pageSize = 10)
     {
         Data = data;
         PageNo = page;
@@ -37,44 +37,44 @@ public class PagedResult<T>
         TotalCount = count;
     }
 
-    public static PagedResult<T> Fail()
+    public static PagedResults<T> Fail()
     {
         return Fail(new List<string>() { });
     }
     
-    public static PagedResult<T> Fail(string message)
+    public static PagedResults<T> Fail(string message)
     {
         return Fail(new List<string>() { message });
     }
 
-    public static PagedResult<T> Fail(List<string> messages)
+    public static PagedResults<T> Fail(List<string> messages)
     {
-        return new PagedResult<T>(false, default, messages);
+        return new PagedResults<T>(false, default, messages);
     }
 
-    public static Task<PagedResult<T>> FailAsync()
+    public static Task<PagedResults<T>> FailAsync()
     {
         return FailAsync(new List<string>() { });
     }
 
-    public static Task<PagedResult<T>> FailAsync(string message)
+    public static Task<PagedResults<T>> FailAsync(string message)
     {
         return FailAsync(new List<string>() { message });
     }
 
-    public static Task<PagedResult<T>> FailAsync(List<string> messages)
+    public static Task<PagedResults<T>> FailAsync(List<string> messages)
     {
-        return Task.FromResult(new PagedResult<T>(false, default, messages));
+        return Task.FromResult(new PagedResults<T>(false, default, messages));
     }
 
-    public static PagedResult<T> Success(IEnumerable<T> data, int totalCount, int currentPage, int pageSize)
+    public static PagedResults<T> Success(IEnumerable<T> data, int totalCount, int currentPage, int pageSize)
     {
-        var result = new PagedResult<T>(true, data, null, totalCount, currentPage, pageSize);
+        var result = new PagedResults<T>(true, data, null, totalCount, currentPage, pageSize);
         result.Messages = new List<string>() { "Success." };
         return result;
     }
 
-    public static Task<PagedResult<T>> SuccessAsync(IEnumerable<T> data, int totalCount, int currentPage,
+    public static Task<PagedResults<T>> SuccessAsync(IEnumerable<T> data, int totalCount, int currentPage,
         int pageSize)
     {
         return Task.FromResult(Success(data, totalCount, currentPage, pageSize));

@@ -3,6 +3,7 @@ using System.Text.Json;
 using Azure.Search.Documents;
 using Azure.Search.Documents.Models;
 using Document.Intelligence.Agent.Entities;
+using Document.Intelligence.Agent.Entities.Agent;
 using Document.Intelligence.Agent.Entities.Chat;
 using Document.Intelligence.Agent.Features.Chat.Models;
 using Document.Intelligence.Agent.Infrastructure.Data;
@@ -44,14 +45,41 @@ public class ChatService: DiaExecuteServiceBase<ChatService, DiaDbContext,  Chat
     {
         const int maxRetries = 3;
         Exception lastEx = null;
-
-        var testId = Guid.Parse("8301dfea-9739-443f-8a9c-864ec2e2ea06");
-        var testDate = DateTime.Now;
         
+        //3번 시도후 결과 없으면 실패
         for (var attempt = 1; attempt <= maxRetries; attempt++)
         {
             try
             {
+                // TODO: 에이전트 기반으로 FILTER 및 응답이 동작하도록 해야 함.
+                var agents = new List<DOCUMENT_AGENT>();                
+                if (request.AgentId.xIsEmpty())
+                {
+                    var mapping = await this.dbContext.AgentUserMappings
+                        .AsNoTracking()
+                        .Where(m => m.UserId == this.session.UserId && m.IsDefault == true && m.IsActive == true)
+                        .Select(m => m.AgentId)
+                        .ToListAsync(cancellationToken: ct);
+                    
+                    agents = await this.dbContext.Agents
+                        .AsNoTracking()
+                        .Include(m => m.AgentPrompts)
+                        .Include(m => m.AgentTopics)
+                        .Where(m => mapping.Contains(m.Id))
+                        .ToListAsync(cancellationToken: ct);
+                }
+                else
+                {
+                    agents =  await this.dbContext.Agents
+                        .AsNoTracking()
+                        .Include(m => m.AgentPrompts)
+                        .Include(m => m.AgentTopics)
+                        .Where(m => m.Id == request.AgentId)
+                        .ToListAsync(cancellationToken: ct);                    
+                }
+
+                if (agents.xIsEmpty()) throw new Exception("Agent is empty");
+                
                 var thread = await this.dbContext.ChatThreads.Where(m => m.Id == request.ThreadId)
                     .FirstOrDefaultAsync(cancellationToken: ct);
 
@@ -69,10 +97,10 @@ public class ChatService: DiaExecuteServiceBase<ChatService, DiaDbContext,  Chat
                     {
                         Id = Guid.NewGuid(),
                         Title = title.Length > 100 ? title[..100] : title,
-                        CreatedAt = testDate,
-                        CreatedId = testId
+                        CreatedId = this.session.UserId,
+                        CreatedAt = this.session.GetNow()
                     };
-                    await this.dbContext.ChatThreads.AddAsync(thread);
+                    await this.dbContext.ChatThreads.AddAsync(thread, ct);
                 }
             
                 var currentQuestionVector = await _embeddingGenerator.GenerateVectorAsync(request.CurrentQuestion, cancellationToken: ct);
@@ -83,69 +111,81 @@ public class ChatService: DiaExecuteServiceBase<ChatService, DiaDbContext,  Chat
                     Id = Guid.NewGuid(),
                     Question = request.CurrentQuestion,
                     QuestionVector = currentQuestionVector.ToArray(),
-                    CreatedAt = testDate,
-                    CreatedId = testId                    
+                    CreatedId = this.session.UserId,
+                    CreatedAt = this.session.GetNow()                  
                 };
-                var planResult = await GenerateQueryPlanAndResearches(thread, question, request.CurrentQuestion);
-                question.QueryPlan = planResult.plan.xSerialize();
-                question.ChunkIdList = planResult.researches
-                    .Select(m => m.ChunkId)
-                    .Where(m => !string.IsNullOrWhiteSpace(m))
-                    .Distinct(StringComparer.Ordinal)
-                    .ToArray();
-                await this.dbContext.ChatQuestions.AddAsync(question);
-                await this.dbContext.ChatQuestionResearches.AddRangeAsync(planResult.researches);
-                
-                var previous = await this.dbContext.ChatQuestions.AsNoTracking()
-                    .Where(m => m.ThreadId == thread.Id)
-                    .Where(m => m.Id == request.PreviousQuestionId)
-                    .FirstOrDefaultAsync();
 
-                bool isContextSwitch = false;
-                if (previous.xIsNotEmpty())
+                DocumentChatResult documentChatResult = null;
+                foreach (var agent in agents)
                 {
-                    isContextSwitch = await _questionContextSwitchService.ExecuteAsync(
-                        new SearchDocumentContextSwitchRequest(
-                            //이전
-                            previous.Question,
-                            previous.QuestionVector,
-                            previous.QueryPlan,
-                            previous.ChunkIdList,
-                            //현재
-                            question.Question,
-                            question.QuestionVector,
-                            question.QueryPlan,
-                            question.ChunkIdList
-                        ), ct);
+                    var planResult = await GenerateQueryPlanAndResearches(thread, question, request.CurrentQuestion);
+                    question.QueryPlan = planResult.plan.xSerialize();
+                    question.ChunkIdList = planResult.researches
+                        .Select(m => m.ChunkId)
+                        .Where(m => !string.IsNullOrWhiteSpace(m))
+                        .Distinct(StringComparer.Ordinal)
+                        .ToArray();
+                    await this.dbContext.ChatQuestions.AddAsync(question, ct);
+                    await this.dbContext.ChatQuestionResearches.AddRangeAsync(planResult.researches, ct);
+
+                    var previous = await this.dbContext.ChatQuestions.AsNoTracking()
+                        .Where(m => m.ThreadId == thread.Id)
+                        .Where(m => m.Id == request.PreviousQuestionId)
+                        .FirstOrDefaultAsync(cancellationToken: ct);
+
+                    bool isContextSwitch = false;
+                    if (previous.xIsNotEmpty())
+                    {
+                        isContextSwitch = await _questionContextSwitchService.ExecuteAsync(
+                            new SearchDocumentContextSwitchRequest(
+                                //이전
+                                previous.Question,
+                                previous.QuestionVector,
+                                previous.QueryPlan,
+                                previous.ChunkIdList,
+                                //현재
+                                question.Question,
+                                question.QuestionVector,
+                                question.QueryPlan,
+                                question.ChunkIdList
+                            ), ct);
+                    }
+
+                    var result = await AskFromGpt(planResult.researches, thread.Id, request.CurrentQuestion, isContextSwitch);
+                    var cleanCitations = (result.Citations ?? Enumerable.Empty<PageCitation>())
+                        .Where(c => !string.IsNullOrWhiteSpace(c.File) && c.Page > 0)
+                        .Select(c => new { File = c.File.Trim(), c.Page })
+                        .DistinctBy(c => (c.File, c.Page))
+                        .Take(50)
+                        .Select(c => new DOCUMENT_CHAT_ANSWER_CITATION { File = c.File, Page = c.Page })
+                        .ToList();
+
+                    var answer = new DOCUMENT_CHAT_ANSWER()
+                    {
+                        QuestionId = question.Id,
+                        
+                        Id = Guid.NewGuid(),
+                        Answer = result.Answer,
+                        Citations = cleanCitations,
+                    };
+                    await this.dbContext.ChatAnswers.AddAsync(answer, ct);
+                    await this.dbContext.SaveChangesAsync(ct);
+
+                    if (answer.Answer.xIsEmpty())
+                    {
+                        continue;
+                    }
+
+                    documentChatResult = new DocumentChatResult
+                    {
+                        ThreadId = thread.Id,
+                        QuestionId = question.Id,
+                        Answer = result.Answer,
+                        Citations = result.Citations
+                    };                    
                 }
-                
-                var result = await AskFromGpt(planResult.researches, thread.Id, request.CurrentQuestion, isContextSwitch);
-                var cleanCitations = (result.Citations ?? Enumerable.Empty<PageCitation>())
-                    .Where(c => !string.IsNullOrWhiteSpace(c.File) && c.Page > 0)
-                    .Select(c => new { File = c.File.Trim(), c.Page })
-                    .DistinctBy(c => (c.File, c.Page))
-                    .Take(50)
-                    .Select(c => new DOCUMENT_CHAT_ANSWER_CITATION { File = c.File, Page = c.Page })
-                    .ToList();
-                
-                var answer = new DOCUMENT_CHAT_ANSWER()
-                {
-                    QuestionId = question.Id,
-                    
-                    Id = Guid.NewGuid(),
-                    Answer = result.Answer,
-                    Citations = cleanCitations,
-                };
-                await this.dbContext.ChatAnswers.AddAsync(answer, ct);
-                await this.dbContext.SaveChangesAsync(ct);
 
-                return await Results<DocumentChatResult>.SuccessAsync(new DocumentChatResult
-                {
-                    ThreadId = thread.Id,
-                    QuestionId = question.Id,
-                    Answer = result.Answer,
-                    Citations = result.Citations
-                });
+                return await Results<DocumentChatResult>.SuccessAsync(documentChatResult);
             }
             catch (Exception e)
             {
@@ -158,6 +198,13 @@ public class ChatService: DiaExecuteServiceBase<ChatService, DiaDbContext,  Chat
         throw lastEx ?? new InvalidOperationException("CHAT THREAD 실패", lastEx);
     }
 
+    /// <summary>
+    /// TODO: AGENT 필더 추가해야 함.
+    /// </summary>
+    /// <param name="documentChatThread"></param>
+    /// <param name="documentChatQuestion"></param>
+    /// <param name="question"></param>
+    /// <returns></returns>
     private async Task<(List<DOCUMENT_CHAT_QUESTION_RESEARCH> researches, QueryPlan plan)> GenerateQueryPlanAndResearches(DOCUMENT_CHAT_THREAD documentChatThread, DOCUMENT_CHAT_QUESTION documentChatQuestion, string question)
     {   
         var messages = new List<ChatMessage>()
@@ -284,6 +331,11 @@ public class ChatService: DiaExecuteServiceBase<ChatService, DiaDbContext,  Chat
         return (addList, plan);
     }
 
+    /// <summary>
+    /// AGENT의 필터 추가해야 함.
+    /// </summary>
+    /// <param name="p"></param>
+    /// <returns></returns>
     private string BuildFilter(QueryPlan p)
     {
         static string Quote(string s) => $"'{s.Replace("'", "''")}'";
@@ -328,9 +380,17 @@ public class ChatService: DiaExecuteServiceBase<ChatService, DiaDbContext,  Chat
             conds.Add($"not search.in(chunk_id, '{joined}', ',')");
         }
 
-        return conds.Count == 0 ? null : string.Join(" and ", conds);
+        return conds.xIsEmpty() ? null : string.Join(" and ", conds);
     }    
     
+    /// <summary>
+    /// TODO: AGENT로 동작하도록 해야 함.
+    /// </summary>
+    /// <param name="items"></param>
+    /// <param name="threadId"></param>
+    /// <param name="question"></param>
+    /// <param name="isShift"></param>
+    /// <returns></returns>
     private async Task<ChatResult> AskFromGpt(IEnumerable<DOCUMENT_CHAT_QUESTION_RESEARCH> items, Guid threadId, string question, bool isShift)
     {
         var jsonOptions = new JsonSerializerOptions()
@@ -348,11 +408,10 @@ public class ChatService: DiaExecuteServiceBase<ChatService, DiaDbContext,  Chat
         
         if (!isShift)
         {
-            //TODO: 날짜 정렬로 변경해야...
             var history = await this.dbContext.ChatQuestions
                 .AsNoTracking()
                 .Where(q => q.ThreadId == threadId)
-                .OrderByDescending(q => q.Id)
+                .OrderByDescending(q => q.CreatedAt)
                 .Take(3)
                 .Select(q => new {
                     q.Question,
@@ -373,7 +432,7 @@ public class ChatService: DiaExecuteServiceBase<ChatService, DiaDbContext,  Chat
         var chatOptions = new ChatOptions()
         {
             MaxOutputTokens = 2048,
-            Temperature = 0f,
+            Temperature = 0.2f,
             TopP = 0.1f,
         };
         var resp = await _chatClient.GetResponseAsync<ChatResult>(messages, chatOptions);
