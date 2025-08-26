@@ -3,7 +3,10 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Document.Intelligence.Agent.Entities.Agent;
 
-
+/*
+ * USER(1) - AGENT(N) = AGENT_USER_MAP
+ * AGENT(1) - TOPIC(N) = AGENT_TOPIC_MAP
+ */
 
 /// <summary>
 /// 사용자에게 할당될 에이전트 테이블
@@ -21,7 +24,7 @@ public class DOCUMENT_AGENT : DOCUMENT_ENTITY_BASE
     public virtual ICollection<DOCUMENT_AGENT_PROMPT> DocumentAgentPrompts { get; set; } =
         new List<DOCUMENT_AGENT_PROMPT>();
     
-    public virtual ICollection<DOCUMENT_AGENT_TOPIC> DocumentAgentTopics { get; set; } = new List<DOCUMENT_AGENT_TOPIC>();
+    public virtual ICollection<DOCUMENT_TOPIC> DocumentAgentTopics { get; set; } = new List<DOCUMENT_TOPIC>();
 }
 
 public class DocumentAgentEntityConfiguration : IEntityTypeConfiguration<DOCUMENT_AGENT>
@@ -34,7 +37,7 @@ public class DocumentAgentEntityConfiguration : IEntityTypeConfiguration<DOCUMEN
 
         builder.HasMany(m => m.DocumentAgentTopics)
             .WithMany()
-            .UsingEntity<DOCUMENT_AGENT_TOPIC_MAP>(
+            .UsingEntity<DOCUMENT_TOPIC_AGENT_MAP>(
                 m => 
                     m.HasOne(n => n.Topic)
                         .WithMany()
@@ -46,9 +49,9 @@ public class DocumentAgentEntityConfiguration : IEntityTypeConfiguration<DOCUMEN
                     .OnDelete(DeleteBehavior.Cascade),
                 m =>
                 {
-                    m.ToTable(nameof(DOCUMENT_AGENT_TOPIC_MAP), "dbo");
+                    m.ToTable(nameof(DOCUMENT_TOPIC_AGENT_MAP), "dbo");
                     m.HasKey(n => new {n.AgentId, n.TopicId});
-                    m.ToTable(nameof(DOCUMENT_AGENT_TOPIC_MAP), "dbo");
+                    m.ToTable(nameof(DOCUMENT_TOPIC_AGENT_MAP), "dbo");
                     m.HasIndex(n => n.IsEnabled);
                     m.HasIndex(n => n.AgentId);
                     m.HasIndex(n => n.TopicId).IsUnique();

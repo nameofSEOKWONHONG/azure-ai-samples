@@ -21,9 +21,9 @@ public class FindTopicService : DiaExecuteServiceBase<FindTopicService, DiaDbCon
 
     public override async Task<PagedResult<FindTopicResult>> ExecuteAsync(FindTopicRequest request, CancellationToken ct = default)
     {
-        var query = dbContext.AgentTopics
+        var query = dbContext.Topics
             .AsNoTracking()
-            .Include(m => m.DocumentAgentTopicMetadatas)
+            .Include(m => m.DocumentTopicMetadatum)
             .AsQueryable();
         if (request.Keyword.xIsNotEmpty())
         {

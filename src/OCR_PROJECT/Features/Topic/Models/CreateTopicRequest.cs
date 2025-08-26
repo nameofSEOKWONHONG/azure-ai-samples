@@ -21,4 +21,4 @@ public sealed record ObjectItem(string Path, string DriveId, string ItemId, bool
 /// <param name="DriveId"></param>
 /// <param name="ItemId"></param>
 /// <param name="IsFolder">false:파일, true:폴더</param>
-public sealed record MqObjectItem(string TopicId, string TopicName, string MetadataId, string Path, string DriveId, string ItemId, bool IsFolder);
+public sealed record TopicMetadataProcessItem(string TopicId, string TopicName, string MetadataId, string Path, string DriveId, string ItemId, bool IsFolder, bool IsDelete);

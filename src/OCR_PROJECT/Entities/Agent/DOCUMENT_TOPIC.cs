@@ -5,8 +5,9 @@ namespace Document.Intelligence.Agent.Entities.Agent;
 
 /// <summary>
 /// 스캔 및 에이전트를 위한 INDEX 필터 역활 테이블
+/// TODO: 잡을 만들어야 하나?
 /// </summary>
-public class DOCUMENT_AGENT_TOPIC : DOCUMENT_ENTITY_BASE
+public class DOCUMENT_TOPIC : DOCUMENT_ENTITY_BASE
 {   
     public Guid Id { get; set; }
     /// <summary>
@@ -19,14 +20,14 @@ public class DOCUMENT_AGENT_TOPIC : DOCUMENT_ENTITY_BASE
     /// </summary>
     public string Category { get; set; }
     
-    public virtual ICollection<DOCUMENT_AGENT_TOPIC_METADATA> DocumentAgentTopicMetadatas { get; set; }
+    public virtual ICollection<DOCUMENT_TOPIC_METADATA> DocumentTopicMetadatum { get; set; }
 }
 
-public class DocumentAgentTopicEntityConfiguration: IEntityTypeConfiguration<DOCUMENT_AGENT_TOPIC>
+public class DocumentTopicEntityConfiguration: IEntityTypeConfiguration<DOCUMENT_TOPIC>
 {
-    public void Configure(EntityTypeBuilder<DOCUMENT_AGENT_TOPIC> builder)
+    public void Configure(EntityTypeBuilder<DOCUMENT_TOPIC> builder)
     {
-        builder.ToTable(nameof(DOCUMENT_AGENT_TOPIC), "dbo");
+        builder.ToTable(nameof(DOCUMENT_TOPIC), "dbo");
         builder.HasKey(x => x.Id);
         builder.Property(m => m.Id)
             .ValueGeneratedOnAdd();

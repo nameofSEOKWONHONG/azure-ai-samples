@@ -10,7 +10,7 @@ namespace Document.Intelligence.Agent.Infrastructure.Session;
 public interface IDiaSessionContext
 {
     bool? IsAdmin { get; }
-    string UserId { get; }
+    Guid UserId { get; }
     string Email { get; }
     DateTime GetNow();
     DateOnly GetNowOnly();
@@ -23,7 +23,7 @@ public interface IDiaSessionContext
 public class DiaSessionContext: IDiaSessionContext
 {
     public bool? IsAdmin { get; }
-    public string UserId { get; }
+    public Guid UserId { get; }
     public string Email { get; }
     public string SelectedLanguage { get; }
     public DiaSessionContext(IHttpContextAccessor accessor)
@@ -32,7 +32,11 @@ public class DiaSessionContext: IDiaSessionContext
         if (accessor.HttpContext.xIsNotEmpty())
         {
             this.IsAdmin = accessor.HttpContext.User?.FindAll(ClaimTypes.Role).Any(m => m.Value.ToUpper() == "ADMIN");
-            this.UserId = accessor.HttpContext.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!Guid.TryParse(accessor.HttpContext.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var guid))
+            {
+                throw new UnauthorizedAccessException("not convert user identity");
+            }
+            this.UserId = guid;
             this.Email = accessor.HttpContext.User?.FindFirst(ClaimTypes.Email)?.Value;    
         }
 
@@ -40,7 +44,7 @@ public class DiaSessionContext: IDiaSessionContext
         if (!accessor.HttpContext.User.Identity.IsAuthenticated)
         {
             this.IsAdmin = true;
-            this.UserId = Guid.NewGuid().ToString();
+            this.UserId = Guid.Parse("4a60023b-de01-4eba-8f08-27492597aa41");
             this.Email = "test@test.com";
         }
         #endif

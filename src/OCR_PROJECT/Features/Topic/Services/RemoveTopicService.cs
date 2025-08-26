@@ -18,7 +18,7 @@ public class RemoveTopicService: DiaExecuteServiceBase<RemoveTopicService, DiaDb
 
     public override async Task<Results<bool>> ExecuteAsync(Guid request, CancellationToken ct = default)
     {
-        var exists = await this.dbContext.AgentTopics.FirstAsync(m => m.Id == request, cancellationToken: ct);
+        var exists = await this.dbContext.Topics.FirstAsync(m => m.Id == request, cancellationToken: ct);
         if (exists.xIsEmpty()) throw new Exception("Id not exists");
 
         this.dbContext.Remove(exists);

@@ -8,10 +8,10 @@ namespace Document.Intelligence.Agent.Entities.Agent;
 /// 메타데이터는 AI SEARCH INDEX 업로드 한다.
 /// 해당 테이블은 내역을 추적하여 갱신하기 위함이다.
 /// </summary>
-public class DOCUMENT_AGENT_TOPIC_METADATA : DOCUMENT_ENTITY_BASE
+public class DOCUMENT_TOPIC_METADATA : DOCUMENT_ENTITY_BASE
 {
-    public Guid DocumentAgentTopicId { get; set; }
-    public virtual DOCUMENT_AGENT_TOPIC DocumentAgentTopic { get; set; }
+    public Guid DocumentTopicId { get; set; }
+    public virtual DOCUMENT_TOPIC DocumentTopic { get; set; }
     
     public Guid Id { get; set; }
     
@@ -50,7 +50,7 @@ public class DOCUMENT_AGENT_TOPIC_METADATA : DOCUMENT_ENTITY_BASE
     
     /// <summary>
     /// 처리 상태 (대기, 처리중, 완료, 에러)
-    /// <see cref="AgentTopicMetadataStatus"/>
+    /// <see cref="TopicMetadataStatus"/>
     /// </summary>
     public string Status { get; set; }
     /// <summary>
@@ -61,13 +61,23 @@ public class DOCUMENT_AGENT_TOPIC_METADATA : DOCUMENT_ENTITY_BASE
     /// 상태별 사유 (에러 메세지)
     /// </summary>
     public string Reason { get; set; }
+    
+    /// <summary>
+    /// index upload된 ID 
+    /// </summary>
+    public string IndexId { get; set; }
+
+    /// <summary>
+    /// 삭제 여부
+    /// </summary>
+    public bool IsDelete { get; set; }
 }
 
-public class DocumentAgentTopicMetadataEntityConfiguration : IEntityTypeConfiguration<DOCUMENT_AGENT_TOPIC_METADATA>
+public class DocumentTopicMetadataEntityConfiguration : IEntityTypeConfiguration<DOCUMENT_TOPIC_METADATA>
 {
-    public void Configure(EntityTypeBuilder<DOCUMENT_AGENT_TOPIC_METADATA> builder)
+    public void Configure(EntityTypeBuilder<DOCUMENT_TOPIC_METADATA> builder)
     {
-        builder.ToTable(nameof(DOCUMENT_AGENT_TOPIC_METADATA), "dbo");
+        builder.ToTable(nameof(DOCUMENT_TOPIC_METADATA), "dbo");
         builder.HasKey(x => x.Id);
 
         builder.Property(x => x.SiteId).HasMaxLength(200);
@@ -79,11 +89,11 @@ public class DocumentAgentTopicMetadataEntityConfiguration : IEntityTypeConfigur
         builder.Property(x => x.PathHash).HasMaxLength(200);
 
         builder.Property(x => x.Creator).HasMaxLength(200);
-        builder.Property(x => x.Modifier).HasMaxLength(200);
+        builder.Property(x => x.Modifier).HasMaxLength(200);   
     }
 }
 
-public class AgentTopicMetadataStatus
+public class TopicMetadataStatus
 {
     /// <summary>
     /// 대기

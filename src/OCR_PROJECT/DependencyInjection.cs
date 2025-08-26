@@ -88,11 +88,17 @@ public static class DependencyInjection
                 var con = sp.GetService<IOptions<ServiceBusOptions>>();
                 return new ServiceBusClient(con.Value.CONNECTION_STRING);
             })
-            .AddSingleton(sp =>
+            .AddScoped(sp =>
             {
                 var con = sp.GetService<IOptions<ServiceBusOptions>>();
                 var client = sp.GetRequiredService<ServiceBusClient>();
                 return client.CreateProcessor(con.Value.QUEUE_NAME);
+            })
+            .AddScoped(sp =>
+            {
+                var con = sp.GetService<IOptions<ServiceBusOptions>>();
+                var client = sp.GetRequiredService<ServiceBusClient>();
+                return client.CreateSender(con.Value.QUEUE_NAME);
             });
 
         #region [배그라운드 서비스용]

@@ -15,11 +15,11 @@ public class DiaDbContext: DbContext
     {
         modelBuilder.UseCollation("Korean_Wansung_CI_AS");
 
-        modelBuilder.ApplyConfiguration(new DocumentAgentUserMappingEntityConfiguration());
+        modelBuilder.ApplyConfiguration(new DocumentAgentUserMapEntityConfiguration());
         modelBuilder.ApplyConfiguration(new DocumentAgentEntityConfiguration());
         modelBuilder.ApplyConfiguration(new DocumentAgentPromptEntityConfiguration());
-        modelBuilder.ApplyConfiguration(new DocumentAgentTopicEntityConfiguration());
-        modelBuilder.ApplyConfiguration(new DocumentAgentTopicMetadataEntityConfiguration());
+        modelBuilder.ApplyConfiguration(new DocumentTopicEntityConfiguration());
+        modelBuilder.ApplyConfiguration(new DocumentTopicMetadataEntityConfiguration());
 
         modelBuilder.ApplyConfiguration(new DocumentChatThreadEntityConfiguration());
         modelBuilder.ApplyConfiguration(new DocumentChatQuestionEntityConfiguration());
@@ -30,12 +30,17 @@ public class DiaDbContext: DbContext
 
     #region [agent]
 
-    public DbSet<DOCUMENT_AGENT_USER_MAPPING> AgentUserMappings { get; set; }
+    public DbSet<DOCUMENT_AGENT_USER_MAP> AgentUserMappings { get; set; }
     public DbSet<DOCUMENT_AGENT> Agents { get; set; }
     public DbSet<DOCUMENT_AGENT_PROMPT> AgentPrompts { get; set; }
-    public DbSet<DOCUMENT_AGENT_TOPIC> AgentTopics { get; set; }
-    public DbSet<DOCUMENT_AGENT_TOPIC_MAP> AgentTopicMaps { get; set; }
-    public DbSet<DOCUMENT_AGENT_TOPIC_METADATA> AgentTopicMetadatas { get; set; }
+    
+    #endregion
+
+    #region [topic]
+
+    public DbSet<DOCUMENT_TOPIC> Topics { get; set; }
+    public DbSet<DOCUMENT_TOPIC_METADATA> TopicMetadatum { get; set; }
+    public DbSet<DOCUMENT_TOPIC_AGENT_MAP> TopicAgentMaps { get; set; }
 
     #endregion
 
