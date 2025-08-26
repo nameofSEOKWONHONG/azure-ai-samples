@@ -69,7 +69,6 @@ public class DrmHandler : IDrmHandler
                 // 라벨 변경 성공
                 return new LabelHandlerResult(true, true, dest);
             }
-
         }
         catch (Exception ex)
         {

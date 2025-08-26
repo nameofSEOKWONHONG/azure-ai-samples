@@ -39,12 +39,13 @@ public class AddTopicJobService: DiaExecuteServiceBase<AddTopicJobService, DiaDb
         
         foreach (var item in request.ObjectItems)
         {       
-            var sendItem = new TopicMetadataProcessItem(request.TopicId, request.TopicName, job.Id, Guid.Empty, item.Path, item.DriveId, item.ItemId, item.IsFolder, false, session.UserId);
-            var sessionId = $"{item.Path}:{item.DriveId}:{item.ItemId}".xGetHashCode();
-            var message = new ServiceBusMessage( BinaryData.FromObjectAsJson(sendItem))
+            var processItem = new TopicMetadataProcessItem(request.TopicId, request.TopicName, job.Id, Guid.Empty, item.Path, item.DriveId, item.ItemId, item.IsFolder, false, session.UserId);
+            var sessionId = $"{item.DriveId}|{item.ItemId}".xGetHashCode();
+            var messageId = $"{request.TopicId}|{item.DriveId}|{item.ItemId}".xGetHashCode();
+            var message = new ServiceBusMessage( BinaryData.FromObjectAsJson(processItem))
             {
                 SessionId = sessionId,
-                MessageId = UlidGenerator.Instance.GenerateString()
+                MessageId = messageId
             }; 
             messages.Add(message);
         }
