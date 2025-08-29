@@ -11,6 +11,7 @@ public static class DependencyInjection
         services.AddScoped<IFindThreadService, FindThreadService>();
         services.AddScoped<IRemoveThreadService, RemoveThreadService>();
         services.AddScoped<IChatService, ChatService>();
+        services.AddScoped<IAgentChatService, AgentChatService>();
         services.AddScoped<IQuestionContextSwitchService, QuestionContextSwitchService>();           
     }
 }

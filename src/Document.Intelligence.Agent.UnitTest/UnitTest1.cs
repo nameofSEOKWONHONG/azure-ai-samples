@@ -152,7 +152,7 @@ public static class MlTokenizerChunker
 
     private static IReadOnlyList<int> TakeTail(List<int> ids, int overlap)
     {
-        if (overlap <= 0 || ids.Count == 0) return Array.Empty<int>();
+        if (overlap <= 0 || ids.Count == 0) return [];
         var take = Math.Min(overlap, ids.Count);
         return ids.GetRange(ids.Count - take, take).ToArray();
     }

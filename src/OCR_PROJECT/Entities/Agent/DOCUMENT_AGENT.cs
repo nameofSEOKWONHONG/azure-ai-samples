@@ -42,6 +42,11 @@ public class DOCUMENT_AGENT : DOCUMENT_ENTITY_BASE
     /// 확률 누적분포(cumulative probability)를 기준으로 상위 후보군만 남기고 선택(0 ~ 1)
     /// </summary>
     public float TopP { get; set; } = 0.2f;
+    
+    /// <summary>
+    /// 기본 여부
+    /// </summary>
+    public bool IsDefault { get; set; }
 
     public virtual ICollection<DOCUMENT_AGENT_PROMPT> AgentPrompts { get; set; } =
         new List<DOCUMENT_AGENT_PROMPT>();

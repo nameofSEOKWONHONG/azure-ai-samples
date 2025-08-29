@@ -34,6 +34,12 @@ public static class ChatEndpoint
             .WithDescription("채팅")
             .AddEndpointFilter<TransactionFilter>();
 
+        group.MapPost("/agent",
+                async ([FromBody] AgentChatRequest request, IAgentChatService service, CancellationToken ct)
+                    => await service.ExecuteAsync(request, ct))
+            .WithDescription("AGENT 기반 채팅")
+            .AddEndpointFilter<TransactionFilter>();
+
         group.MapDelete("/{id}", async (Guid? id, IRemoveThreadService service, CancellationToken ct)
                 => await service.ExecuteAsync(id, ct))
             .WithDescription("채팅 삭제")
