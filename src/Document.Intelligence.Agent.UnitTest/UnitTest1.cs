@@ -1,0 +1,159 @@
+using System.Text.RegularExpressions;
+using Microsoft.ML.Tokenizers;
+
+namespace Document.Intelligence.Agent.UnitTest;
+
+public class Tests
+{
+    [SetUp]
+    public void Setup()
+    {
+    }
+
+    [Test]
+    public void Test1()
+    {
+        string text = "데이터 표준화는 시스템별로 산재해 있는 데이터 정보 항목에 대한 명칭, 정의, 형식, 규칙에 대한 원칙을 수립하여 이를 전사적으로 적용하고 지속적으로 모니터링하는 일련의 활동을 의미합니다. 이를 통해 데이터의 가독성과 일관성을 향상시키고, 업무 효율성과 데이터 품질을 높이는 것을 목표로 합니다.";
+
+        var chunks = MlTokenizerChunker.ChunkByTokens(
+            paragraphs: text.Select(m => m.ToString()).ToArray(),          // IEnumerable<string>
+            targetMinTokens: 8,
+            targetMaxTokens: 12,
+            overlapTokens: 2,
+            encodingOrModel : "o200k_base"        // 최신 모델이면 "o200k_base"
+        );
+
+        foreach (var c in chunks)
+        {
+            // AI Search/임베딩 업로드
+            Console.WriteLine($"[Chunk] {c}");
+        }
+    }
+}
+
+public static class MlTokenizerChunker
+{
+    // 문장 경계(한/영 혼합)
+    private static readonly Regex SentenceSplit =
+        new(@"(?<=[\.?!。！？])\s+|\n{2,}", RegexOptions.Compiled);
+
+    /// <summary>
+    /// ML.Tokenizers(Tiktoken) 기반 토큰 청킹
+    /// </summary>
+    /// <param name="paragraphs">문단 나열</param>
+    /// <param name="targetMinTokens">청크 배출 힌트 최소 토큰</param>
+    /// <param name="targetMaxTokens">청크 최대 토큰(절대 초과 금지)</param>
+    /// <param name="overlapTokens">인접 청크 간 겹침 토큰 수</param>
+    /// <param name="encodingOrModel">
+    /// 예: "cl100k_base", "o200k_base" 또는 "gpt-4o"(모델명) 등
+    /// </param>
+    public static IEnumerable<string> ChunkByTokens(
+        IEnumerable<string> paragraphs,
+        int targetMinTokens = 800,
+        int targetMaxTokens = 1200,
+        int overlapTokens = 200,
+        string encodingOrModel = "cl100k_base")
+    {
+        // 1) 토크나이저 준비
+        Tokenizer tokenizer = CreateTokenizer(encodingOrModel);
+
+        var buffer = new List<int>(targetMaxTokens + overlapTokens);
+
+        foreach (var para in paragraphs.Select(p => p?.Trim()).Where(p => !string.IsNullOrWhiteSpace(p)))
+        {
+            var sentences = SentenceSplit.Split(para)
+                                         .Select(s => s.Trim())
+                                         .Where(s => s.Length > 0);
+
+            foreach (var sent in sentences)
+            {
+                var sentIds = tokenizer.EncodeToIds(sent); // 문자열→토큰ID :contentReference[oaicite:1]{index=1}
+
+                // 문장 하나가 너무 긴 경우 하드 슬라이스
+                if (sentIds.Count > targetMaxTokens)
+                {
+                    if (buffer.Count > 0)
+                    {
+                        yield return tokenizer.Decode(buffer); // 토큰ID→문자열 :contentReference[oaicite:2]{index=2}
+                        buffer.Clear();
+                    }
+
+                    foreach (var hard in SliceWithOverlap(sentIds, targetMaxTokens, overlapTokens))
+                        yield return tokenizer.Decode(hard);
+                    continue;
+                }
+
+                // 버퍼에 수용 시도
+                if (buffer.Count + sentIds.Count <= targetMaxTokens)
+                {
+                    buffer.AddRange(sentIds);
+                }
+                else
+                {
+                    // 배출 + overlap 꼬리 보존
+                    yield return tokenizer.Decode(buffer);
+                    var tail = TakeTail(buffer, overlapTokens);
+                    buffer.Clear();
+                    buffer.AddRange(tail);
+
+                    if (buffer.Count + sentIds.Count <= targetMaxTokens)
+                        buffer.AddRange(sentIds);
+                    else
+                    {
+                        // overlap이 커서 안 들어가면 하드 슬라이스
+                        foreach (var hard in SliceWithOverlap(sentIds, targetMaxTokens, overlapTokens))
+                            yield return tokenizer.Decode(hard);
+                    }
+                }
+
+                // targetMinTokens 도달 시 조기 배출
+                if (buffer.Count >= targetMinTokens)
+                {
+                    yield return tokenizer.Decode(buffer);
+                    var tail = TakeTail(buffer, overlapTokens);
+                    buffer.Clear();
+                    buffer.AddRange(tail);
+                }
+            }
+        }
+
+        if (buffer.Count > 0)
+            yield return tokenizer.Decode(buffer);
+    }
+
+    private static Tokenizer CreateTokenizer(string encodingOrModel)
+    {
+        // encoding 이름으로 생성(예: cl100k_base / o200k_base)
+        // 또는 모델명으로 생성(예: gpt-4o) — Data 패키지 필요
+        try
+        {
+            return TiktokenTokenizer.CreateForEncoding(encodingOrModel);
+        }
+        catch
+        {
+            // encoding 이름이 아니면 모델명으로 시도
+            return TiktokenTokenizer.CreateForModel(encodingOrModel);
+        }
+    }
+
+    private static IEnumerable<IReadOnlyList<int>> SliceWithOverlap(
+        IReadOnlyList<int> ids, int maxSize, int overlap)
+    {
+        if (maxSize <= 0) yield break;
+        var step = Math.Max(1, maxSize - Math.Max(0, overlap));
+
+        for (int start = 0; start < ids.Count; start += step)
+        {
+            var end = Math.Min(ids.Count, start + maxSize);
+            yield return ids.Skip(start).Take(end - start).ToArray();
+            if (end == ids.Count) yield break;
+        }
+    }
+
+    private static IReadOnlyList<int> TakeTail(List<int> ids, int overlap)
+    {
+        if (overlap <= 0 || ids.Count == 0) return Array.Empty<int>();
+        var take = Math.Min(overlap, ids.Count);
+        return ids.GetRange(ids.Count - take, take).ToArray();
+    }
+}

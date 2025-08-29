@@ -11,12 +11,12 @@ using Document.Intelligence.Agent.Entities;
 using Document.Intelligence.Agent.Features.Agent;
 using Document.Intelligence.Agent.Features.AiSearch;
 using Document.Intelligence.Agent.Features.Chat;
+using Document.Intelligence.Agent.Features.Doc;
 using Document.Intelligence.Agent.Features.Drm.M365;
 using Document.Intelligence.Agent.Features.Drm.M365.Models;
 using Document.Intelligence.Agent.Features.Graph;
 using Document.Intelligence.Agent.Features.Receipt;
 using Document.Intelligence.Agent.Features.Topic;
-using Document.Intelligence.Agent.Features.Topic.Services;
 using Document.Intelligence.Agent.Infrastructure.Session;
 using Document.Intelligence.Agent.MessageQueue;
 using Document.Intelligence.Agent.MessageQueue.Services;
@@ -116,6 +116,7 @@ public static class DependencyInjection
         services.AddAgentService();
         services.AddChatService();
         services.AddTopicService();
+        services.AddDocService();
 
         services.AddDrmHandler(configuration);
         services.AddReceiptService(configuration);

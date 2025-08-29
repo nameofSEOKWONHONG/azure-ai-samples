@@ -6,6 +6,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Document.Intelligence.Agent
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Document.Intelligence.Agent.Api", "Document.Intelligence.Agent.Api\Document.Intelligence.Agent.Api.csproj", "{C3015395-EF9A-4744-8917-56401E77D653}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Document.Intelligence.Agent.UnitTest", "Document.Intelligence.Agent.UnitTest\Document.Intelligence.Agent.UnitTest.csproj", "{70C04D48-F9B3-41AF-A0B6-908B29798746}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -24,5 +26,9 @@ Global
 		{C3015395-EF9A-4744-8917-56401E77D653}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C3015395-EF9A-4744-8917-56401E77D653}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C3015395-EF9A-4744-8917-56401E77D653}.Release|Any CPU.Build.0 = Release|Any CPU
+		{70C04D48-F9B3-41AF-A0B6-908B29798746}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{70C04D48-F9B3-41AF-A0B6-908B29798746}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{70C04D48-F9B3-41AF-A0B6-908B29798746}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{70C04D48-F9B3-41AF-A0B6-908B29798746}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
